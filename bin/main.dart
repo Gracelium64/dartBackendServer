@@ -10,6 +10,7 @@ import 'package:args/args.dart';
 import 'package:ansicolor/ansicolor.dart';
 import 'dart:io';
 import 'dart:async';
+import 'package:shadow_app_backend/server.dart' as server;
 
 /// ASCII art and UI utilities for styled terminal output
 class TerminalUI {
@@ -206,17 +207,13 @@ Future<void> _runServer(ArgResults results) async {
   print('  Database: $dbPath');
   print('  Log Level: $logLevel');
 
-  TerminalUI.printSuccess('Database initialized at $dbPath');
-  TerminalUI.printSuccess('Listening on http://$host:$port');
-
-  // TODO: Implement actual server initialization
-  // For now, show placeholder
-  print('\n[PLACEHOLDER] Server would start here');
-  print('[PLACEHOLDER] HTTP endpoints would be registered');
-  print('[PLACEHOLDER] Press Ctrl+C to stop server');
-
-  // Keep server running
-  await Future.delayed(Duration(days: 365));
+  // Start the actual server
+  try {
+    await server.runServer(host, port);
+  } catch (e) {
+    TerminalUI.printError('Failed to start server: $e');
+    exit(1);
+  }
 }
 
 /// Run log-tail mode
@@ -224,7 +221,7 @@ Future<void> _runLogTail(ArgResults results) async {
   TerminalUI.printHeader('Live Action Log - Shadow App Backend');
 
   final lines = int.parse(results['lines'] as String);
-  final follow = results['flag']('follow') as bool? ?? false;
+  final follow = results['follow'] as bool? ?? false;
 
   print(
       '''\nDisplaying recent $lines log entries${follow ? ' (following new entries...)' : ''}

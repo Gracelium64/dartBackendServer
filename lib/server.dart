@@ -112,43 +112,47 @@ Press Ctrl+C to stop the server gracefully.
   /// Explanation: Middleware intercepts all requests before they reach handlers.
   /// This is similar to didChangeAppLifecycleState() in Flutter—a hook to process
   /// events before they're fully handled.
-  Middleware _loggingMiddleware = (Handler innerHandler) {
-    return (Request request) async {
-      final startTime = DateTime.now();
-      final response = await innerHandler(request);
-      final duration = DateTime.now().difference(startTime);
+  Middleware get _loggingMiddleware {
+    return (Handler innerHandler) {
+      return (Request request) async {
+        final startTime = DateTime.now();
+        final response = await innerHandler(request);
+        final duration = DateTime.now().difference(startTime);
 
-      print(
-          '[${request.method}] ${request.url.path} → ${response.statusCode} (${duration.inMilliseconds}ms)');
+        print(
+            '[${request.method}] ${request.url.path} → ${response.statusCode} (${duration.inMilliseconds}ms)');
 
-      return response;
+        return response;
+      };
     };
-  };
+  }
 
   /// Middleware: Check JWT authentication on protected routes
-  Middleware _authMiddleware = (Handler innerHandler) {
-    return (Request request) async {
-      // Routes that don't need auth
-      final publicRoutes = ['/health', '/auth/signup', '/auth/login'];
-      if (publicRoutes.contains(request.url.path)) {
-        return innerHandler(request);
-      }
+  Middleware get _authMiddleware {
+    return (Handler innerHandler) {
+      return (Request request) async {
+        // Routes that don't need auth
+        final publicRoutes = ['/health', '/auth/signup', '/auth/login'];
+        if (publicRoutes.contains(request.url.path)) {
+          return innerHandler(request);
+        }
 
-      // Check for Authorization header
-      final authHeader = request.headers['authorization'];
-      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
-        return _jsonErrorResponse(401, 'Missing or invalid token');
-      }
+        // Check for Authorization header
+        final authHeader = request.headers['authorization'];
+        if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+          return _createJsonErrorResponse(401, 'Missing or invalid token');
+        }
 
-      final token = authHeader.substring(7);
-      final claims = AuthService.validateToken(token);
-      if (claims == null) {
-        return _jsonErrorResponse(401, 'Invalid or expired token');
-      }
+        final token = authHeader.substring(7);
+        final claims = AuthService.validateToken(token);
+        if (claims == null) {
+          return _createJsonErrorResponse(401, 'Invalid or expired token');
+        }
 
-      return innerHandler(request.change(context: {'claims': claims}));
+        return innerHandler(request.change(context: {'claims': claims}));
+      };
     };
-  };
+  }
 
   /// Handler: Health check endpoint
   /// Used to verify server is running
@@ -445,6 +449,123 @@ Press Ctrl+C to stop the server gracefully.
     );
   }
 
+  /// Handler: Media metadata
+  Future<Response> _mediaMetadataHandler(Request request) async {
+    try {
+      final claims = _claimsFromRequest(request);
+      if (claims == null) {
+        return _jsonErrorResponse(401, 'Not authenticated');
+      }
+
+      final mediaId = request.params['mediaId'];
+      if (mediaId == null || mediaId.isEmpty) {
+        return _jsonErrorResponse(400, 'Media ID required');
+      }
+
+      final media = await database.getMediaBlob(mediaId);
+      if (media == null) {
+        return _jsonErrorResponse(404, 'Media not found');
+      }
+
+      return Response.ok(
+        jsonEncode({
+          'success': true,
+          'data': {
+            'id': media.id,
+            'document_id': media.documentId,
+            'file_name': media.fileName,
+            'mime_type': media.mimeType,
+            'original_size': media.originalSize,
+            'compressed_size': media.compressedSize,
+            'compression_algo': media.compressionAlgo,
+            'uploaded_at': media.createdAt.toIso8601String(),
+          },
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({'success': false, 'error': e.toString()}),
+      );
+    }
+  }
+
+  /// Helper: Create JSON error response
+  Response _jsonErrorResponse(int statusCode, String message) {
+    return _createJsonErrorResponse(statusCode, message);
+  }
+
+  /// Helper: Extract claims from request context
+  Map<String, dynamic>? _claimsFromRequest(Request request) {
+    return request.context['claims'] as Map<String, dynamic>?;
+  }
+
+  /// Helper: Parse multipart form data
+  Future<_MultipartData?> _parseMultipart(Request request) async {
+    try {
+      final contentType = request.headers['content-type'];
+      if (contentType == null || !contentType.contains('multipart/form-data')) {
+        return null;
+      }
+
+      // Extract boundary from content-type
+      final boundary = contentType.split('boundary=').last;
+      final body = await request.readAsString();
+      
+      // Parse multipart data
+      final parts = body.split('--$boundary');
+      final fields = <String, String>{};
+      List<int> fileBytes = [];
+      String fileName = '';
+      String mimeType = 'application/octet-stream';
+
+      for (final part in parts) {
+        if (part.isEmpty || part.trim() == '--') continue;
+
+        // Parse headers and content
+        final sections = part.split('\r\n\r\n');
+        if (sections.length < 2) continue;
+
+        final headers = sections[0];
+        final content = sections.sublist(1).join('\r\n\r\n').trim();
+
+        // Check if it's a file
+        if (headers.contains('filename=')) {
+          final fileNameMatch = RegExp(r'filename="([^"]+)"').firstMatch(headers);
+          if (fileNameMatch != null) {
+            fileName = fileNameMatch.group(1)!;
+          }
+
+          final contentTypeMatch = RegExp(r'Content-Type:\s*([^\r\n]+)').firstMatch(headers);
+          if (contentTypeMatch != null) {
+            mimeType = contentTypeMatch.group(1)!.trim();
+          }
+
+          // Convert content to bytes (simple approach - in production use proper multipart parser)
+          fileBytes = content.codeUnits;
+        } else {
+          // It's a regular field
+          final nameMatch = RegExp(r'name="([^"]+)"').firstMatch(headers);
+          if (nameMatch != null) {
+            final fieldName = nameMatch.group(1)!;
+            fields[fieldName] = content;
+          }
+        }
+      }
+
+      return _MultipartData(
+        fields: fields,
+        fileBytes: fileBytes,
+        fileName: fileName,
+        mimeType: mimeType,
+      );
+    } catch (e) {
+      print('[ERROR] Failed to parse multipart: $e');
+      return null;
+    }
+  }
+
   /// Gracefully shutdown the server
   Future<void> stop() async {
     print('\n[INFO] Received shutdown signal');
@@ -453,6 +574,34 @@ Press Ctrl+C to stop the server gracefully.
     await _httpServer.close();
     print('[INFO] Goodbye!');
   }
+}
+
+/// Simple multipart data holder
+class _MultipartData {
+  final Map<String, String> fields;
+  final List<int> fileBytes;
+  final String fileName;
+  final String mimeType;
+
+  _MultipartData({
+    required this.fields,
+    required this.fileBytes,
+    required this.fileName,
+    required this.mimeType,
+  });
+}
+
+/// Static helper to create JSON error responses (used in middleware)
+Response _createJsonErrorResponse(int statusCode, String message) {
+  return Response(
+    statusCode,
+    body: jsonEncode({
+      'success': false,
+      'error': message,
+      'timestamp': DateTime.now().toIso8601String(),
+    }),
+    headers: {'Content-Type': 'application/json'},
+  );
 }
 
 /// Factory to create and run server

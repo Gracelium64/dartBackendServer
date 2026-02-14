@@ -11,6 +11,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
+import 'package:archive/archive.dart';
 import '../database/models.dart';
 import '../config.dart';
 
@@ -198,9 +199,46 @@ class ServerLogger {
 
   /// Export logs as archive
   Future<String> exportLogsAsArchive() async {
-    // TODO: Implement tar/gzip compression
-    print('[LOG] Export logs as archive (TODO)');
-    return 'exported_logs.tar.gz';
+    final timestamp = DateTime.now().toIso8601String().substring(0, 10);
+    final archivePath = path.join(
+      globalConfig.logFilePath,
+      'exported_logs_$timestamp.tar.gz',
+    );
+
+    print('[LOG] Exporting logs as archive...');
+
+    // Get all log files
+    final files = await getLogFiles();
+    if (files.isEmpty) {
+      print('[LOG] No log files to export');
+      return archivePath;
+    }
+
+    // Create a tar archive
+    final archive = Archive();
+
+    for (final file in files) {
+      final bytes = await file.readAsBytes();
+      final archiveFile = ArchiveFile(
+        path.basename(file.path),
+        bytes.length,
+        bytes,
+      );
+      archive.addFile(archiveFile);
+    }
+
+    // Encode as tar
+    final tarBytes = TarEncoder().encode(archive);
+    
+    // Compress with gzip
+    final gzipBytes = GZipEncoder().encode(tarBytes);
+
+    // Write to file
+    final archiveFile = File(archivePath);
+    await archiveFile.writeAsBytes(gzipBytes!);
+
+    print('[LOG] Archive created: ${archiveFile.path} (${gzipBytes.length} bytes, ${files.length} files)');
+    return archivePath;
   }
 }
 
