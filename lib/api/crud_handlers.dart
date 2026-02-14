@@ -6,6 +6,7 @@
 // logs the action, and returns a response.
 
 import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
 import 'dart:convert';
 import '../database/models.dart';
 import '../database/db_manager.dart';
@@ -24,30 +25,39 @@ Future<Map<String, dynamic>?> _getUserFromRequest(Request request) async {
   return claims;
 }
 
+Response _jsonErrorResponse(int statusCode, String message) {
+  return Response(
+    statusCode,
+    body: jsonEncode({'error': message}),
+    headers: {'Content-Type': 'application/json'},
+  );
+}
+
 /// Create a new document in a collection
 Future<Response> handleCreateDocument(Request request) async {
   try {
-    final collectionId = request.params['collectionId'] as String?;
+    final collectionId = request.params['collectionId'];
     if (collectionId == null) {
-      return Response.badRequest(body: jsonEncode({'error': 'Collection ID required'}));
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection ID required'}));
     }
 
     // Check authentication
     final userClaims = await _getUserFromRequest(request);
     if (userClaims == null) {
-      return Response.unauthorized(body: jsonEncode({'error': 'Not authenticated'}));
+      return _jsonErrorResponse(401, 'Not authenticated');
     }
 
     final userId = userClaims['sub'] as String;
     final user = await database.getUserById(userId);
     if (user == null) {
-      return Response.forbidden(body: jsonEncode({'error': 'User not found'}));
+      return _jsonErrorResponse(403, 'User not found');
     }
 
     // Get collection and check write permission
     final collection = await database.getCollection(collectionId);
     if (collection == null) {
-      return Response.notFound(body: jsonEncode({'error': 'Collection not found'}));
+      return _jsonErrorResponse(404, 'Collection not found');
     }
 
     if (!RuleEngine.canWrite(userId, user.role, collection)) {
@@ -60,7 +70,7 @@ Future<Response> handleCreateDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Permission denied',
       ));
-      return Response.forbidden(body: jsonEncode({'error': 'Permission denied'}));
+      return _jsonErrorResponse(403, 'Permission denied');
     }
 
     // Parse request body
@@ -109,23 +119,24 @@ Future<Response> handleCreateDocument(Request request) async {
 /// Read a document from a collection
 Future<Response> handleReadDocument(Request request) async {
   try {
-    final collectionId = request.params['collectionId'] as String?;
-    final docId = request.params['docId'] as String?;
+    final collectionId = request.params['collectionId'];
+    final docId = request.params['docId'];
 
     if (collectionId == null || docId == null) {
-      return Response.badRequest(body: jsonEncode({'error': 'Collection and document IDs required'}));
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection and document IDs required'}));
     }
 
     // Check authentication
     final userClaims = await _getUserFromRequest(request);
     if (userClaims == null) {
-      return Response.unauthorized(body: jsonEncode({'error': 'Not authenticated'}));
+      return _jsonErrorResponse(401, 'Not authenticated');
     }
 
     final userId = userClaims['sub'] as String;
     final user = await database.getUserById(userId);
     if (user == null) {
-      return Response.forbidden(body: jsonEncode({'error': 'User not found'}));
+      return _jsonErrorResponse(403, 'User not found');
     }
 
     // Get collection and check read permission
@@ -139,7 +150,7 @@ Future<Response> handleReadDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Collection not found',
       ));
-      return Response.notFound(body: jsonEncode({'error': 'Collection not found'}));
+      return _jsonErrorResponse(404, 'Collection not found');
     }
 
     if (!RuleEngine.canRead(userId, user.role, collection)) {
@@ -151,7 +162,7 @@ Future<Response> handleReadDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Permission denied',
       ));
-      return Response.forbidden(body: jsonEncode({'error': 'Permission denied'}));
+      return _jsonErrorResponse(403, 'Permission denied');
     }
 
     // Get document
@@ -165,7 +176,7 @@ Future<Response> handleReadDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Document not found',
       ));
-      return Response.notFound(body: jsonEncode({'error': 'Document not found'}));
+      return _jsonErrorResponse(404, 'Document not found');
     }
 
     // Verify document belongs to collection
@@ -178,7 +189,7 @@ Future<Response> handleReadDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Document not in collection',
       ));
-      return Response.forbidden(body: jsonEncode({'error': 'Document not in collection'}));
+      return _jsonErrorResponse(403, 'Document not in collection');
     }
 
     // Log successful read
@@ -215,29 +226,30 @@ Future<Response> handleReadDocument(Request request) async {
 /// Update a document
 Future<Response> handleUpdateDocument(Request request) async {
   try {
-    final collectionId = request.params['collectionId'] as String?;
-    final docId = request.params['docId'] as String?;
+    final collectionId = request.params['collectionId'];
+    final docId = request.params['docId'];
 
     if (collectionId == null || docId == null) {
-      return Response.badRequest(body: jsonEncode({'error': 'Collection and document IDs required'}));
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection and document IDs required'}));
     }
 
     // Check authentication
     final userClaims = await _getUserFromRequest(request);
     if (userClaims == null) {
-      return Response.unauthorized(body: jsonEncode({'error': 'Not authenticated'}));
+      return _jsonErrorResponse(401, 'Not authenticated');
     }
 
     final userId = userClaims['sub'] as String;
     final user = await database.getUserById(userId);
     if (user == null) {
-      return Response.forbidden(body: jsonEncode({'error': 'User not found'}));
+      return _jsonErrorResponse(403, 'User not found');
     }
 
     // Get collection and check write permission
     final collection = await database.getCollection(collectionId);
     if (collection == null) {
-      return Response.notFound(body: jsonEncode({'error': 'Collection not found'}));
+      return _jsonErrorResponse(404, 'Collection not found');
     }
 
     if (!RuleEngine.canWrite(userId, user.role, collection)) {
@@ -249,7 +261,7 @@ Future<Response> handleUpdateDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Permission denied',
       ));
-      return Response.forbidden(body: jsonEncode({'error': 'Permission denied'}));
+      return _jsonErrorResponse(403, 'Permission denied');
     }
 
     // Get existing document
@@ -263,7 +275,7 @@ Future<Response> handleUpdateDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Document not found',
       ));
-      return Response.notFound(body: jsonEncode({'error': 'Document not found'}));
+      return _jsonErrorResponse(404, 'Document not found');
     }
 
     if (existingDoc.collectionId != collectionId) {
@@ -275,7 +287,7 @@ Future<Response> handleUpdateDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Document not in collection',
       ));
-      return Response.forbidden(body: jsonEncode({'error': 'Document not in collection'}));
+      return _jsonErrorResponse(403, 'Document not in collection');
     }
 
     // Parse update data
@@ -283,7 +295,7 @@ Future<Response> handleUpdateDocument(Request request) async {
     final updateData = jsonDecode(body) as Map<String, dynamic>;
 
     // Check merge flag from query params
-    final merge = request.url.queryParameters['merge'] == 'true' ?? true;
+    final merge = (request.url.queryParameters['merge'] ?? 'true') == 'true';
 
     // Merge or replace data
     final newData = merge ? {...existingDoc.data, ...updateData} : updateData;
@@ -332,29 +344,30 @@ Future<Response> handleUpdateDocument(Request request) async {
 /// Delete a document
 Future<Response> handleDeleteDocument(Request request) async {
   try {
-    final collectionId = request.params['collectionId'] as String?;
-    final docId = request.params['docId'] as String?;
+    final collectionId = request.params['collectionId'];
+    final docId = request.params['docId'];
 
     if (collectionId == null || docId == null) {
-      return Response.badRequest(body: jsonEncode({'error': 'Collection and document IDs required'}));
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection and document IDs required'}));
     }
 
     // Check authentication
     final userClaims = await _getUserFromRequest(request);
     if (userClaims == null) {
-      return Response.unauthorized(body: jsonEncode({'error': 'Not authenticated'}));
+      return _jsonErrorResponse(401, 'Not authenticated');
     }
 
     final userId = userClaims['sub'] as String;
     final user = await database.getUserById(userId);
     if (user == null) {
-      return Response.forbidden(body: jsonEncode({'error': 'User not found'}));
+      return _jsonErrorResponse(403, 'User not found');
     }
 
     // Get collection and check write permission
     final collection = await database.getCollection(collectionId);
     if (collection == null) {
-      return Response.notFound(body: jsonEncode({'error': 'Collection not found'}));
+      return _jsonErrorResponse(404, 'Collection not found');
     }
 
     if (!RuleEngine.canWrite(userId, user.role, collection)) {
@@ -366,7 +379,7 @@ Future<Response> handleDeleteDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Permission denied',
       ));
-      return Response.forbidden(body: jsonEncode({'error': 'Permission denied'}));
+      return _jsonErrorResponse(403, 'Permission denied');
     }
 
     // Get document to verify it exists and belongs to collection
@@ -380,7 +393,7 @@ Future<Response> handleDeleteDocument(Request request) async {
         status: 'failed',
         errorMessage: 'Document not found',
       ));
-      return Response.notFound(body: jsonEncode({'error': 'Document not found'}));
+      return _jsonErrorResponse(404, 'Document not found');
     }
 
     // Delete document
@@ -414,39 +427,43 @@ Future<Response> handleDeleteDocument(Request request) async {
 /// List documents in a collection
 Future<Response> handleListDocuments(Request request) async {
   try {
-    final collectionId = request.params['collectionId'] as String?;
+    final collectionId = request.params['collectionId'];
     if (collectionId == null) {
-      return Response.badRequest(body: jsonEncode({'error': 'Collection ID required'}));
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection ID required'}));
     }
 
     // Check authentication
     final userClaims = await _getUserFromRequest(request);
     if (userClaims == null) {
-      return Response.unauthorized(body: jsonEncode({'error': 'Not authenticated'}));
+      return _jsonErrorResponse(401, 'Not authenticated');
     }
 
     final userId = userClaims['sub'] as String;
     final user = await database.getUserById(userId);
     if (user == null) {
-      return Response.forbidden(body: jsonEncode({'error': 'User not found'}));
+      return _jsonErrorResponse(403, 'User not found');
     }
 
     // Get collection and check read permission
     final collection = await database.getCollection(collectionId);
     if (collection == null) {
-      return Response.notFound(body: jsonEncode({'error': 'Collection not found'}));
+      return _jsonErrorResponse(404, 'Collection not found');
     }
 
     if (!RuleEngine.canRead(userId, user.role, collection)) {
-      return Response.forbidden(body: jsonEncode({'error': 'Permission denied'}));
+      return _jsonErrorResponse(403, 'Permission denied');
     }
 
     // Parse pagination parameters
-    final limit = int.tryParse(request.url.queryParameters['limit'] ?? '10') ?? 10;
-    final offset = int.tryParse(request.url.queryParameters['offset'] ?? '0') ?? 0;
+    final limit =
+        int.tryParse(request.url.queryParameters['limit'] ?? '10') ?? 10;
+    final offset =
+        int.tryParse(request.url.queryParameters['offset'] ?? '0') ?? 0;
 
     // Get documents
-    final docs = await database.getCollectionDocuments(collectionId, limit: limit, offset: offset);
+    final docs = await database.getCollectionDocuments(collectionId,
+        limit: limit, offset: offset);
 
     return Response.ok(
       jsonEncode({

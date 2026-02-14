@@ -14,6 +14,12 @@ import 'models.dart';
 import 'migrations.dart';
 import '../config.dart';
 
+extension RowToMap on Row {
+  Map<String, Object?> toMap() {
+    return Map<String, Object?>.from(this);
+  }
+}
+
 /// Main database manager class
 /// Handles all database connections, queries, and transactions
 class DatabaseManager {
@@ -71,18 +77,15 @@ class DatabaseManager {
   /// Create a new user
   Future<User> createUser(User user) async {
     try {
-      final stmt =
-          _db.prepare('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)');
-      stmt
-        ..bind([
-          user.id,
-          user.email,
-          user.passwordHash,
-          user.role,
-          user.createdAt.millisecondsSinceEpoch,
-          user.updatedAt.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      final stmt = _db.prepare('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)');
+      stmt.execute([
+        user.id,
+        user.email,
+        user.passwordHash,
+        user.role,
+        user.createdAt.millisecondsSinceEpoch,
+        user.updatedAt.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       print('[DB] User created: ${user.email}');
@@ -142,18 +145,16 @@ class DatabaseManager {
   Future<Collection> createCollection(Collection collection) async {
     try {
       final rulesJson = _jsonEncode(collection.rules);
-      final stmt = _db
-          .prepare('INSERT INTO collections VALUES (?, ?, ?, ?, ?, ?)');
-      stmt
-        ..bind([
-          collection.id,
-          collection.ownerId,
-          collection.name,
-          rulesJson,
-          collection.createdAt.millisecondsSinceEpoch,
-          collection.updatedAt.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      final stmt =
+          _db.prepare('INSERT INTO collections VALUES (?, ?, ?, ?, ?, ?)');
+      stmt.execute([
+        collection.id,
+        collection.ownerId,
+        collection.name,
+        rulesJson,
+        collection.createdAt.millisecondsSinceEpoch,
+        collection.updatedAt.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       print('[DB] Collection created: ${collection.name}');
@@ -167,8 +168,7 @@ class DatabaseManager {
   /// Get collection by ID
   Future<Collection?> getCollection(String collectionId) async {
     try {
-      final stmt =
-          _db.prepare('SELECT * FROM collections WHERE id = ?');
+      final stmt = _db.prepare('SELECT * FROM collections WHERE id = ?');
       final rows = stmt.select([collectionId]);
       stmt.dispose();
 
@@ -210,16 +210,14 @@ class DatabaseManager {
       final dataJson = _jsonEncode(document.data);
       final stmt =
           _db.prepare('INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?)');
-      stmt
-        ..bind([
-          document.id,
-          document.collectionId,
-          document.ownerId,
-          dataJson,
-          document.createdAt.millisecondsSinceEpoch,
-          document.updatedAt.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      stmt.execute([
+        document.id,
+        document.collectionId,
+        document.ownerId,
+        dataJson,
+        document.createdAt.millisecondsSinceEpoch,
+        document.updatedAt.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       print('[DB] Document created: ${document.id}');
@@ -284,13 +282,11 @@ class DatabaseManager {
         SET data = ?, updated_at = ? 
         WHERE id = ?
       ''');
-      stmt
-        ..bind([
-          dataJson,
-          document.updatedAt.millisecondsSinceEpoch,
-          document.id,
-        ])
-        ..execute();
+      stmt.execute([
+        dataJson,
+        document.updatedAt.millisecondsSinceEpoch,
+        document.id,
+      ]);
       stmt.dispose();
 
       print('[DB] Document updated: ${document.id}');
@@ -311,8 +307,7 @@ class DatabaseManager {
       deleteMediaStmt.dispose();
 
       // Delete the document
-      final deleteDocStmt =
-          _db.prepare('DELETE FROM documents WHERE id = ?');
+      final deleteDocStmt = _db.prepare('DELETE FROM documents WHERE id = ?');
       deleteDocStmt.execute([documentId]);
       deleteDocStmt.dispose();
 
@@ -332,19 +327,17 @@ class DatabaseManager {
         INSERT INTO media_blobs 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''');
-      stmt
-        ..bind([
-          media.id,
-          media.documentId,
-          media.fileName,
-          media.mimeType,
-          media.originalSize,
-          media.compressedSize,
-          media.compressionAlgo,
-          media.blobData,
-          media.createdAt.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      stmt.execute([
+        media.id,
+        media.documentId,
+        media.fileName,
+        media.mimeType,
+        media.originalSize,
+        media.compressedSize,
+        media.compressionAlgo,
+        media.blobData,
+        media.createdAt.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       print('[DB] Media blob created: ${media.id}');
@@ -380,18 +373,16 @@ class DatabaseManager {
         INSERT INTO audit_log 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ''');
-      stmt
-        ..bind([
-          entry.id,
-          entry.userId,
-          entry.action,
-          entry.resourceType,
-          entry.resourceId,
-          entry.status,
-          entry.errorMessage,
-          entry.timestamp.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      stmt.execute([
+        entry.id,
+        entry.userId,
+        entry.action,
+        entry.resourceType,
+        entry.resourceId,
+        entry.status,
+        entry.errorMessage,
+        entry.timestamp.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       return entry;
@@ -446,8 +437,7 @@ class DatabaseManager {
       [List<dynamic>? params]) {
     try {
       final stmt = _db.prepare(sql);
-      final result =
-          params == null ? stmt.select() : stmt.select(params);
+      final result = params == null ? stmt.select() : stmt.select(params);
       stmt.dispose();
 
       return result.map((r) => r.toMap()).toList();
@@ -465,7 +455,8 @@ class DatabaseManager {
           _db.select('SELECT COUNT(*) as count FROM collections');
       final documentCount =
           _db.select('SELECT COUNT(*) as count FROM documents');
-      final mediaCount = _db.select('SELECT COUNT(*) as count FROM media_blobs');
+      final mediaCount =
+          _db.select('SELECT COUNT(*) as count FROM media_blobs');
 
       return {
         'users': userCount.first.toMap()['count'],
