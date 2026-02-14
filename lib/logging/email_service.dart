@@ -6,6 +6,7 @@
 
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
+import 'package:archive/archive.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import '../config.dart';
@@ -17,7 +18,8 @@ class EmailService {
   /// Called automatically on the 1st of each month
   static Future<bool> sendMonthlyLogReport(String adminEmail) async {
     try {
-      if (globalConfig.gmailEmail.isEmpty || globalConfig.gmailPassword.isEmpty) {
+      if (globalConfig.gmailEmail.isEmpty ||
+          globalConfig.gmailPassword.isEmpty) {
         print('[EMAIL] Gmail credentials not configured');
         return false;
       }
@@ -31,16 +33,18 @@ class EmailService {
         return false;
       }
 
-      // Create archive of logs (TODO: implement actual compression)
+      // Create archive of logs
       final archivePath = await _createLogArchive(logFiles);
 
       // Send email via Gmail SMTP
-      final smtpServer = gmail(globalConfig.gmailEmail, globalConfig.gmailPassword);
+      final smtpServer =
+          gmail(globalConfig.gmailEmail, globalConfig.gmailPassword);
 
       final message = Message()
         ..from = Address(globalConfig.gmailEmail, 'Shadow App Backend')
         ..recipients.add(adminEmail)
-        ..subject = '[Shadow App] Monthly Log Report - ${DateTime.now().toIso8601String().substring(0, 7)}'
+        ..subject =
+            '[Shadow App] Monthly Log Report - ${DateTime.now().toIso8601String().substring(0, 7)}'
         ..html = _buildEmailBody()
         ..attachments.add(FileAttachment(File(archivePath)));
 
@@ -116,29 +120,54 @@ class EmailService {
 
   /// Create a compressed archive of log files
   static Future<String> _createLogArchive(List<File> files) async {
-    // TODO: Implement actual tar.gz compression
-    // For now, just write logs to a directory
-
     final timestamp = DateTime.now().toIso8601String().substring(0, 10);
-    final archivePath =
-        'data/logs/shadow_app_logs_$timestamp.tar.gz';
+    final archivePath = path.join(
+      globalConfig.logFilePath,
+      'shadow_app_logs_$timestamp.tar.gz',
+    );
 
-    print('[EMAIL] Archive would be created at: $archivePath');
+    print('[EMAIL] Creating archive at: $archivePath');
 
+    // Create a tar archive
+    final archive = Archive();
+
+    for (final file in files) {
+      final bytes = await file.readAsBytes();
+      final archiveFile = ArchiveFile(
+        path.basename(file.path),
+        bytes.length,
+        bytes,
+      );
+      archive.addFile(archiveFile);
+    }
+
+    // Encode as tar
+    final tarBytes = TarEncoder().encode(archive);
+    
+    // Compress with gzip
+    final gzipBytes = GZipEncoder().encode(tarBytes);
+
+    // Write to file
+    final archiveFile = File(archivePath);
+    await archiveFile.writeAsBytes(gzipBytes!);
+
+    print('[EMAIL] Archive created: ${archiveFile.path} (${gzipBytes.length} bytes)');
     return archivePath;
   }
 
   /// Test email sending (for manual verification)
   static Future<bool> testEmail(String to) async {
     try {
-      if (globalConfig.gmailEmail.isEmpty || globalConfig.gmailPassword.isEmpty) {
+      if (globalConfig.gmailEmail.isEmpty ||
+          globalConfig.gmailPassword.isEmpty) {
         print('[EMAIL] Gmail credentials not configured');
         return false;
       }
 
       print('[EMAIL] Sending test email to $to...');
 
-      final smtpServer = gmail(globalConfig.gmailEmail, globalConfig.gmailPassword);
+      final smtpServer =
+          gmail(globalConfig.gmailEmail, globalConfig.gmailPassword);
 
       final message = Message()
         ..from = Address(globalConfig.gmailEmail, 'Shadow App Backend')
@@ -186,7 +215,8 @@ class EmailService {
     // Schedule the email send
     Future.delayed(delayUntilNextRun, () async {
       await sendMonthlyLogReport(adminEmail);
-      // Reschedule for next month
+      // Reschedule for next month (fire and forget)
+      // ignore: unawaited_futures
       scheduleMonthlyReport(adminEmail);
     });
   }

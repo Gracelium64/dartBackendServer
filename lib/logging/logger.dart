@@ -9,9 +9,9 @@
 
 import 'dart:io';
 import 'dart:async';
-import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
+import 'package:archive/archive.dart';
 import '../database/models.dart';
 import '../config.dart';
 
@@ -56,7 +56,8 @@ class ServerLogger {
   /// Create or open today's log file
   void _createTodayLogFile() {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final logPath = path.join(globalConfig.logFilePath, 'shadow_app_$today.log');
+    final logPath =
+        path.join(globalConfig.logFilePath, 'shadow_app_$today.log');
     _currentLogFile = File(logPath);
     _logSink = _currentLogFile.openWrite(mode: FileMode.append);
     print('[LOG] Log file: $logPath');
@@ -100,7 +101,8 @@ class ServerLogger {
   /// Check if log file needs to be rotated
   void _checkLogRotation() {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final expectedPath = path.join(globalConfig.logFilePath, 'shadow_app_$today.log');
+    final expectedPath =
+        path.join(globalConfig.logFilePath, 'shadow_app_$today.log');
 
     if (_currentLogFile.path != expectedPath) {
       // Day has changed, rotate log file
@@ -120,7 +122,9 @@ class ServerLogger {
 
   /// Get recent log entries
   List<AuditLog> getRecentLogs({int count = 50}) {
-    return _recentLogs.skip((_recentLogs.length - count).clamp(0, _recentLogs.length)).toList();
+    return _recentLogs
+        .skip((_recentLogs.length - count).clamp(0, _recentLogs.length))
+        .toList();
   }
 
   /// Read log file
@@ -195,9 +199,46 @@ class ServerLogger {
 
   /// Export logs as archive
   Future<String> exportLogsAsArchive() async {
-    // TODO: Implement tar/gzip compression
-    print('[LOG] Export logs as archive (TODO)');
-    return 'exported_logs.tar.gz';
+    final timestamp = DateTime.now().toIso8601String().substring(0, 10);
+    final archivePath = path.join(
+      globalConfig.logFilePath,
+      'exported_logs_$timestamp.tar.gz',
+    );
+
+    print('[LOG] Exporting logs as archive...');
+
+    // Get all log files
+    final files = await getLogFiles();
+    if (files.isEmpty) {
+      print('[LOG] No log files to export');
+      return archivePath;
+    }
+
+    // Create a tar archive
+    final archive = Archive();
+
+    for (final file in files) {
+      final bytes = await file.readAsBytes();
+      final archiveFile = ArchiveFile(
+        path.basename(file.path),
+        bytes.length,
+        bytes,
+      );
+      archive.addFile(archiveFile);
+    }
+
+    // Encode as tar
+    final tarBytes = TarEncoder().encode(archive);
+    
+    // Compress with gzip
+    final gzipBytes = GZipEncoder().encode(tarBytes);
+
+    // Write to file
+    final archiveFile = File(archivePath);
+    await archiveFile.writeAsBytes(gzipBytes!);
+
+    print('[LOG] Archive created: ${archiveFile.path} (${gzipBytes.length} bytes, ${files.length} files)');
+    return archivePath;
   }
 }
 

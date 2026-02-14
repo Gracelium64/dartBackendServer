@@ -10,10 +10,11 @@ import 'package:args/args.dart';
 import 'package:ansicolor/ansicolor.dart';
 import 'dart:io';
 import 'dart:async';
+import 'package:shadow_app_backend/server.dart' as server;
 
 /// ASCII art and UI utilities for styled terminal output
 class TerminalUI {
-  static final _pen = AnsiPen()..color(4); // Blue
+  static final _pen = AnsiPen()..blue();
   static final _penGreen = AnsiPen()..green();
   static final _penRed = AnsiPen()..red();
   static final _penYellow = AnsiPen()..yellow();
@@ -139,11 +140,9 @@ ArgParser _serverCommand() {
     ..addOption('port', defaultsTo: '8080', help: 'Server port')
     ..addOption('host', defaultsTo: '0.0.0.0', help: 'Server host')
     ..addOption('db-path',
-        defaultsTo: 'data/shadow_app.db',
-        help: 'Path to SQLite database file')
+        defaultsTo: 'data/shadow_app.db', help: 'Path to SQLite database file')
     ..addOption('log-level',
-        defaultsTo: 'INFO',
-        help: 'Logging level (DEBUG, INFO, WARN, ERROR)')
+        defaultsTo: 'INFO', help: 'Logging level (DEBUG, INFO, WARN, ERROR)')
     ..addFlag('stop', help: 'Stop running server gracefully');
 }
 
@@ -151,8 +150,7 @@ ArgParser _serverCommand() {
 ArgParser _logTailCommand() {
   return ArgParser()
     ..addOption('lines',
-        defaultsTo: '50',
-        help: 'Number of recent lines to display')
+        defaultsTo: '50', help: 'Number of recent lines to display')
     ..addFlag('follow', help: 'Follow new log entries (like tail -f)');
 }
 
@@ -162,8 +160,7 @@ ArgParser _adminCommand() {
     ..addOption('admin-key',
         help: 'Admin key for authentication (will prompt if not provided)')
     ..addOption('server-url',
-        defaultsTo: 'http://localhost:8080',
-        help: 'Backend server URL');
+        defaultsTo: 'http://localhost:8080', help: 'Backend server URL');
 }
 
 void _printUsage(ArgParser parser) {
@@ -210,17 +207,13 @@ Future<void> _runServer(ArgResults results) async {
   print('  Database: $dbPath');
   print('  Log Level: $logLevel');
 
-  TerminalUI.printSuccess('Database initialized at $dbPath');
-  TerminalUI.printSuccess('Listening on http://$host:$port');
-
-  // TODO: Implement actual server initialization
-  // For now, show placeholder
-  print('\n[PLACEHOLDER] Server would start here');
-  print('[PLACEHOLDER] HTTP endpoints would be registered');
-  print('[PLACEHOLDER] Press Ctrl+C to stop server');
-
-  // Keep server running
-  await Future.delayed(Duration(days: 365));
+  // Start the actual server
+  try {
+    await server.runServer(host, port);
+  } catch (e) {
+    TerminalUI.printError('Failed to start server: $e');
+    exit(1);
+  }
 }
 
 /// Run log-tail mode
@@ -228,9 +221,10 @@ Future<void> _runLogTail(ArgResults results) async {
   TerminalUI.printHeader('Live Action Log - Shadow App Backend');
 
   final lines = int.parse(results['lines'] as String);
-  final follow = results['flag']('follow') as bool? ?? false;
+  final follow = results['follow'] as bool? ?? false;
 
-  print('''\nDisplaying recent $lines log entries${follow ? ' (following new entries...)' : ''}
+  print(
+      '''\nDisplaying recent $lines log entries${follow ? ' (following new entries...)' : ''}
 
 ''');
 
@@ -245,27 +239,9 @@ Future<void> _runLogTail(ArgResults results) async {
 
   // Print example data (placeholder)
   final exampleRows = [
-    [
-      '2026-02-14T10:30:05Z',
-      'user@example.com',
-      'LOGIN',
-      'user:user-123',
-      '✓'
-    ],
-    [
-      '2026-02-14T10:30:15Z',
-      'user@example.com',
-      'CREATE',
-      'doc:doc-456',
-      '✓'
-    ],
-    [
-      '2026-02-14T10:30:22Z',
-      'admin@example.com',
-      'READ',
-      'doc:doc-456',
-      '✓'
-    ],
+    ['2026-02-14T10:30:05Z', 'user@example.com', 'LOGIN', 'user:user-123', '✓'],
+    ['2026-02-14T10:30:15Z', 'user@example.com', 'CREATE', 'doc:doc-456', '✓'],
+    ['2026-02-14T10:30:22Z', 'admin@example.com', 'READ', 'doc:doc-456', '✓'],
   ];
 
   TerminalUI.printTable(headers, exampleRows);
@@ -351,7 +327,7 @@ void _adminMenuUsers() {
   print('4. Change Role');
 
   print('Enter choice (1-4): ');
-  final choice = stdin.readLineSync();
+  stdin.readLineSync();
   print('[PLACEHOLDER] Admin user management would go here');
 }
 
@@ -369,7 +345,7 @@ void _adminMenuCrud() {
   print('5. List Collection');
 
   print('Enter choice (1-5): ');
-  final choice = stdin.readLineSync();
+  stdin.readLineSync();
   print('[PLACEHOLDER] CRUD executor would go here');
 }
 
@@ -403,6 +379,6 @@ void _adminMenuReports() {
   print('3. Storage Usage Report');
 
   print('Enter choice (1-3): ');
-  final choice = stdin.readLineSync();
+  stdin.readLineSync();
   print('[PLACEHOLDER] Report generator would go here');
 }
