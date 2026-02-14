@@ -109,8 +109,8 @@ class ServerConfig {
       return inputPath;
     }
 
-    final baseDir =
-        path.join(homeDir, 'Library', 'Application Support', 'ShadowAppBackend');
+    final baseDir = path.join(
+        homeDir, 'Library', 'Application Support', 'ShadowAppBackend');
     return path.normalize(path.join(baseDir, inputPath));
   }
 
