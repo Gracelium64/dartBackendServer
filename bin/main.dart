@@ -13,7 +13,7 @@ import 'dart:async';
 
 /// ASCII art and UI utilities for styled terminal output
 class TerminalUI {
-  static final _pen = AnsiPen()..color(4); // Blue
+  static final _pen = AnsiPen()..blue();
   static final _penGreen = AnsiPen()..green();
   static final _penRed = AnsiPen()..red();
   static final _penYellow = AnsiPen()..yellow();
@@ -351,7 +351,7 @@ void _adminMenuUsers() {
   print('4. Change Role');
 
   print('Enter choice (1-4): ');
-  final choice = stdin.readLineSync();
+  stdin.readLineSync();
   print('[PLACEHOLDER] Admin user management would go here');
 }
 
@@ -369,7 +369,7 @@ void _adminMenuCrud() {
   print('5. List Collection');
 
   print('Enter choice (1-5): ');
-  final choice = stdin.readLineSync();
+  stdin.readLineSync();
   print('[PLACEHOLDER] CRUD executor would go here');
 }
 
@@ -403,6 +403,6 @@ void _adminMenuReports() {
   print('3. Storage Usage Report');
 
   print('Enter choice (1-3): ');
-  final choice = stdin.readLineSync();
+  stdin.readLineSync();
   print('[PLACEHOLDER] Report generator would go here');
 }

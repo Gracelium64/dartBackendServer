@@ -56,8 +56,6 @@ class PasswordUtils {
     // but it's better than plain hashing.
 
     var result = password;
-    final saltBytes = salt.codeUnits;
-
     for (int i = 0; i < iterations; i++) {
       // Simulate PBKDF2 through repeated hashing
       // (production should use actual PBKDF2 implementation)

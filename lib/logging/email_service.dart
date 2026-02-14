@@ -120,8 +120,10 @@ class EmailService {
     // For now, just write logs to a directory
 
     final timestamp = DateTime.now().toIso8601String().substring(0, 10);
-    final archivePath =
-        'data/logs/shadow_app_logs_$timestamp.tar.gz';
+    final archivePath = path.join(
+      globalConfig.logFilePath,
+      'shadow_app_logs_$timestamp.tar.gz',
+    );
 
     print('[EMAIL] Archive would be created at: $archivePath');
 

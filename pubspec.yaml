@@ -3,9 +3,8 @@ description: >
   A Dart backend learning server for Flutter developers.
   Provides authentication, CRUD operations, media storage, and admin tooling.
 version: 0.1.0
-
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   # HTTP Server Framework
@@ -32,7 +31,7 @@ dependencies:
 
   # CLI & Terminal UI
   args: ^2.4.0
-  cli_table: ^0.3.0
+  cli_table: ^1.0.2
   ansicolor: ^2.0.1
 
   # Media & Compression
@@ -47,7 +46,6 @@ dependencies:
 dev_dependencies:
   test: ^1.24.0
   build_runner: ^2.4.0
-  json_serializable: ^6.6.0
   lints: ^2.1.0
 
 dependency_overrides:
