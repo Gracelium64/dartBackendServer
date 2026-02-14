@@ -502,6 +502,10 @@ Press Ctrl+C to stop the server gracefully.
   }
 
   /// Helper: Parse multipart form data
+  /// WARNING: This is a simplified implementation for demonstration purposes.
+  /// For production use with binary files (images, videos, etc.), use a proper
+  /// multipart parser library like the `mime` package's MimeMultipartTransformer.
+  /// The current implementation using `codeUnits` will corrupt binary files.
   Future<_MultipartData?> _parseMultipart(Request request) async {
     try {
       final contentType = request.headers['content-type'];
@@ -542,7 +546,9 @@ Press Ctrl+C to stop the server gracefully.
             mimeType = contentTypeMatch.group(1)!.trim();
           }
 
-          // Convert content to bytes (simple approach - in production use proper multipart parser)
+          // Convert content to bytes
+          // Note: This simplified approach treats content as text.
+          // For binary files in production, use request.read() and proper multipart parsing.
           fileBytes = content.codeUnits;
         } else {
           // It's a regular field
