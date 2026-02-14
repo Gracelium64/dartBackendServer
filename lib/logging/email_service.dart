@@ -17,7 +17,8 @@ class EmailService {
   /// Called automatically on the 1st of each month
   static Future<bool> sendMonthlyLogReport(String adminEmail) async {
     try {
-      if (globalConfig.gmailEmail.isEmpty || globalConfig.gmailPassword.isEmpty) {
+      if (globalConfig.gmailEmail.isEmpty ||
+          globalConfig.gmailPassword.isEmpty) {
         print('[EMAIL] Gmail credentials not configured');
         return false;
       }
@@ -35,12 +36,14 @@ class EmailService {
       final archivePath = await _createLogArchive(logFiles);
 
       // Send email via Gmail SMTP
-      final smtpServer = gmail(globalConfig.gmailEmail, globalConfig.gmailPassword);
+      final smtpServer =
+          gmail(globalConfig.gmailEmail, globalConfig.gmailPassword);
 
       final message = Message()
         ..from = Address(globalConfig.gmailEmail, 'Shadow App Backend')
         ..recipients.add(adminEmail)
-        ..subject = '[Shadow App] Monthly Log Report - ${DateTime.now().toIso8601String().substring(0, 7)}'
+        ..subject =
+            '[Shadow App] Monthly Log Report - ${DateTime.now().toIso8601String().substring(0, 7)}'
         ..html = _buildEmailBody()
         ..attachments.add(FileAttachment(File(archivePath)));
 
@@ -120,8 +123,10 @@ class EmailService {
     // For now, just write logs to a directory
 
     final timestamp = DateTime.now().toIso8601String().substring(0, 10);
-    final archivePath =
-        'data/logs/shadow_app_logs_$timestamp.tar.gz';
+    final archivePath = path.join(
+      globalConfig.logFilePath,
+      'shadow_app_logs_$timestamp.tar.gz',
+    );
 
     print('[EMAIL] Archive would be created at: $archivePath');
 
@@ -131,14 +136,16 @@ class EmailService {
   /// Test email sending (for manual verification)
   static Future<bool> testEmail(String to) async {
     try {
-      if (globalConfig.gmailEmail.isEmpty || globalConfig.gmailPassword.isEmpty) {
+      if (globalConfig.gmailEmail.isEmpty ||
+          globalConfig.gmailPassword.isEmpty) {
         print('[EMAIL] Gmail credentials not configured');
         return false;
       }
 
       print('[EMAIL] Sending test email to $to...');
 
-      final smtpServer = gmail(globalConfig.gmailEmail, globalConfig.gmailPassword);
+      final smtpServer =
+          gmail(globalConfig.gmailEmail, globalConfig.gmailPassword);
 
       final message = Message()
         ..from = Address(globalConfig.gmailEmail, 'Shadow App Backend')

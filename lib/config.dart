@@ -3,6 +3,7 @@
 // This file handles loading settings from environment variables and config files
 
 import 'dart:io';
+import 'package:path/path.dart' as path;
 import 'package:yaml/yaml.dart';
 
 /// Main configuration class that holds all server settings
@@ -38,6 +39,8 @@ class ServerConfig {
       // Fall back to environment variables or defaults
       _loadDefaults();
     }
+
+    _normalizePaths();
   }
 
   /// Load configuration from YAML map
@@ -85,6 +88,30 @@ class ServerConfig {
     gmailPassword = '';
     enableCors = true;
     enableWal = true;
+  }
+
+  void _normalizePaths() {
+    dbPath = _resolvePathForPlatform(dbPath);
+    logFilePath = _resolvePathForPlatform(logFilePath);
+  }
+
+  String _resolvePathForPlatform(String inputPath) {
+    if (!Platform.isMacOS) {
+      return inputPath;
+    }
+
+    if (path.isAbsolute(inputPath)) {
+      return inputPath;
+    }
+
+    final homeDir = Platform.environment['HOME'];
+    if (homeDir == null || homeDir.isEmpty) {
+      return inputPath;
+    }
+
+    final baseDir = path.join(
+        homeDir, 'Library', 'Application Support', 'ShadowAppBackend');
+    return path.normalize(path.join(baseDir, inputPath));
   }
 
   /// Generate a random secret for JWT signing
