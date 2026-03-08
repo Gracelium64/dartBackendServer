@@ -363,8 +363,12 @@ Press Ctrl+C to stop the server gracefully.
         return _jsonErrorResponse(403, 'User not found');
       }
 
-      if (requester.role != 'admin') {
-        return _jsonErrorResponse(403, 'Admin role required');
+      final normalizedRole = requester.role.trim().toLowerCase();
+      if (normalizedRole != 'admin') {
+        return _jsonErrorResponse(
+          403,
+          'Admin role required (current role: ${requester.role})',
+        );
       }
 
       final users = await database.getAllUsers();
@@ -410,7 +414,8 @@ Press Ctrl+C to stop the server gracefully.
         return _jsonErrorResponse(403, 'User not found');
       }
 
-      final collections = requester.role == 'admin'
+      final normalizedRole = requester.role.trim().toLowerCase();
+      final collections = normalizedRole == 'admin'
           ? await database.getAllCollections()
           : await database.getUserCollections(userId);
 

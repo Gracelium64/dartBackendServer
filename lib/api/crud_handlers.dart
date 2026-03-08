@@ -506,16 +506,20 @@ Future<Response> handleAdminSqlQuery(Request request) async {
       return _jsonErrorResponse(403, 'User not found');
     }
 
-    if (user.role != 'admin') {
+    final normalizedRole = user.role.trim().toLowerCase();
+    if (normalizedRole != 'admin') {
       await database.logAction(AuditLog(
         userId: userId,
         action: 'QUERY',
         resourceType: 'sql',
         resourceId: 'admin-sql',
         status: 'failed',
-        errorMessage: 'Admin role required',
+        errorMessage: 'Admin role required (current role: ${user.role})',
       ));
-      return _jsonErrorResponse(403, 'Admin role required');
+      return _jsonErrorResponse(
+        403,
+        'Admin role required (current role: ${user.role})',
+      );
     }
 
     final rawBody = await request.readAsString();

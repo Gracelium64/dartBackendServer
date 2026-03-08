@@ -159,13 +159,19 @@ class DatabaseManager {
   /// Update a user's role
   Future<User?> updateUserRole(String userId, String role) async {
     try {
+      final normalizedRole = role.trim().toLowerCase();
+
+      if (normalizedRole != 'user' && normalizedRole != 'admin') {
+        throw ArgumentError('Role must be either "user" or "admin"');
+      }
+
       final stmt = _db.prepare('''
         UPDATE users
         SET role = ?, updated_at = ?
         WHERE id = ?
       ''');
       stmt.execute([
-        role,
+        normalizedRole,
         DateTime.now().millisecondsSinceEpoch,
         userId,
       ]);

@@ -134,7 +134,9 @@ Future<void> changeUserRole(DatabaseManager database) async {
   }
 
   print('Current role: ${user.role}');
-  final newRole = TerminalUI.prompt('New role (user/admin)', required: true);
+  final newRole = TerminalUI.prompt('New role (user/admin)', required: true)
+      .trim()
+      .toLowerCase();
 
   if (newRole != 'user' && newRole != 'admin') {
     TerminalUI.printError('Invalid role. Must be "user" or "admin"');
