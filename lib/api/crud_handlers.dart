@@ -25,6 +25,14 @@ Future<Map<String, dynamic>?> _getUserFromRequest(Request request) async {
   return claims;
 }
 
+Response _jsonErrorResponse(int statusCode, String message) {
+  return Response(
+    statusCode,
+    body: jsonEncode({'error': message}),
+    headers: {'Content-Type': 'application/json'},
+  );
+}
+
 /// Create a new document in a collection
 Response _jsonErrorResponse(int statusCode, String message) {
   return Response(
@@ -38,7 +46,12 @@ Future<Response> handleCreateDocument(Request request) async {
   try {
     final collectionId = request.params['collectionId'];
     if (collectionId == null) {
+<<<<<<< HEAD
       return _jsonErrorResponse(400, 'Collection ID required');
+=======
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection ID required'}));
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
     }
 
     // Check authentication
@@ -122,7 +135,12 @@ Future<Response> handleReadDocument(Request request) async {
     final docId = request.params['docId'];
 
     if (collectionId == null || docId == null) {
+<<<<<<< HEAD
       return _jsonErrorResponse(400, 'Collection and document IDs required');
+=======
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection and document IDs required'}));
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
     }
 
     // Check authentication
@@ -228,7 +246,12 @@ Future<Response> handleUpdateDocument(Request request) async {
     final docId = request.params['docId'];
 
     if (collectionId == null || docId == null) {
+<<<<<<< HEAD
       return _jsonErrorResponse(400, 'Collection and document IDs required');
+=======
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection and document IDs required'}));
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
     }
 
     // Check authentication
@@ -345,7 +368,12 @@ Future<Response> handleDeleteDocument(Request request) async {
     final docId = request.params['docId'];
 
     if (collectionId == null || docId == null) {
+<<<<<<< HEAD
       return _jsonErrorResponse(400, 'Collection and document IDs required');
+=======
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection and document IDs required'}));
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
     }
 
     // Check authentication
@@ -425,7 +453,12 @@ Future<Response> handleListDocuments(Request request) async {
   try {
     final collectionId = request.params['collectionId'];
     if (collectionId == null) {
+<<<<<<< HEAD
       return _jsonErrorResponse(400, 'Collection ID required');
+=======
+      return Response.badRequest(
+          body: jsonEncode({'error': 'Collection ID required'}));
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
     }
 
     // Check authentication

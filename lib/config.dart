@@ -95,6 +95,13 @@ class ServerConfig {
     logFilePath = _resolvePathForPlatform(logFilePath);
   }
 
+<<<<<<< HEAD
+=======
+  /// Resolve paths based on platform conventions
+  /// macOS: Uses ~/Library/Application Support/ShadowAppBackend for application data
+  /// Linux/Other: Uses relative paths from the working directory
+  /// This ensures each platform follows its standard data storage conventions.
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
   String _resolvePathForPlatform(String inputPath) {
     if (!Platform.isMacOS) {
       return inputPath;

@@ -19,7 +19,10 @@
         "logging",
         "mailer",
         "path",
+<<<<<<< HEAD
         "path_provider",
+=======
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
         "pointycastle",
         "shelf",
         "shelf_cors_headers",
@@ -234,6 +237,7 @@
       ]
     },
     {
+<<<<<<< HEAD
       "name": "path_provider",
       "version": "2.1.5",
       "dependencies": [
@@ -246,6 +250,8 @@
       ]
     },
     {
+=======
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
       "name": "path",
       "version": "1.9.1",
       "dependencies": []
@@ -748,6 +754,7 @@
       ]
     },
     {
+<<<<<<< HEAD
       "name": "path_provider_windows",
       "version": "2.3.0",
       "dependencies": [
@@ -806,6 +813,8 @@
       ]
     },
     {
+=======
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
       "name": "web",
       "version": "1.1.1",
       "dependencies": []
@@ -948,6 +957,7 @@
       ]
     },
     {
+<<<<<<< HEAD
       "name": "plugin_platform_interface",
       "version": "2.1.8",
       "dependencies": [
@@ -985,6 +995,8 @@
       ]
     },
     {
+=======
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
       "name": "quiver",
       "version": "3.2.2",
       "dependencies": [

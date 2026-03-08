@@ -232,7 +232,11 @@ class ServerLogger {
 
     // Encode as tar
     final tarBytes = TarEncoder().encode(archive);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
     // Compress with gzip
     final gzipBytes = GZipEncoder().encode(tarBytes);
 
@@ -240,8 +244,12 @@ class ServerLogger {
     final archiveFile = File(archivePath);
     await archiveFile.writeAsBytes(gzipBytes!);
 
+<<<<<<< HEAD
     print(
         '[LOG] Archive created: ${archiveFile.path} (${gzipBytes.length} bytes, ${files.length} files)');
+=======
+    print('[LOG] Archive created: ${archiveFile.path} (${gzipBytes.length} bytes, ${files.length} files)');
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
     return archivePath;
   }
 }

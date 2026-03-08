@@ -28,12 +28,17 @@ class ShadowAppServer {
   late Router _router;
 
   /// Initialize and start the server
+<<<<<<< HEAD
   Future<void> start(
     String host,
     int port, {
     String? dbPathOverride,
     String? logLevelOverride,
   }) async {
+=======
+  Future<void> start(String host, int port,
+      {String? dbPathOverride, String? logLevelOverride}) async {
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
     // Initialize configuration
     globalConfig = ServerConfig();
     await globalConfig.load();
@@ -95,6 +100,7 @@ Press Ctrl+C to stop the server gracefully.
 
     // CRUD endpoints
     _router.post(
+<<<<<<< HEAD
       '/api/collections/<collectionId>/documents',
       _createDocHandler,
     );
@@ -106,6 +112,13 @@ Press Ctrl+C to stop the server gracefully.
       '/api/collections/<collectionId>/documents/<docId>',
       _updateDocHandler,
     );
+=======
+        '/api/collections/<collectionId>/documents', _createDocHandler);
+    _router.get(
+        '/api/collections/<collectionId>/documents/<docId>', _readDocHandler);
+    _router.put(
+        '/api/collections/<collectionId>/documents/<docId>', _updateDocHandler);
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
     _router.delete(
       '/api/collections/<collectionId>/documents/<docId>',
       _deleteDocHandler,
@@ -117,10 +130,13 @@ Press Ctrl+C to stop the server gracefully.
     _router.post('/api/media/upload', _uploadMediaHandler);
     _router.get('/api/media/download/<mediaId>', _downloadMediaHandler);
     _router.get('/api/media/metadata/<mediaId>', _mediaMetadataHandler);
+<<<<<<< HEAD
 
     // Log endpoints (for admin GUI)
     _router.get('/api/logs/recent', _recentLogsHandler);
     _router.get('/api/logs/stream', _logsStreamHandler);
+=======
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
 
     // Catch-all for 404
     _router.all('/<ignored|.*>', _notFoundHandler);
@@ -136,6 +152,7 @@ Press Ctrl+C to stop the server gracefully.
         final startTime = DateTime.now();
         final response = await innerHandler(request);
         final duration = DateTime.now().difference(startTime);
+<<<<<<< HEAD
         final claims = request.context['claims'] as Map<String, dynamic>?;
         final userId = claims?['sub']?.toString() ?? 'anonymous';
         final status = response.statusCode >= 400 ? 'failed' : 'success';
@@ -158,6 +175,12 @@ Press Ctrl+C to stop the server gracefully.
           '[${request.method}] ${request.url.path} → ${response.statusCode} (${duration.inMilliseconds}ms)',
         );
 
+=======
+
+        print(
+            '[${request.method}] ${request.url.path} → ${response.statusCode} (${duration.inMilliseconds}ms)');
+
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
         return response;
       };
     };
@@ -168,6 +191,7 @@ Press Ctrl+C to stop the server gracefully.
     return (Handler innerHandler) {
       return (Request request) async {
         // Routes that don't need auth
+<<<<<<< HEAD
         final publicRoutes = [
           '/health',
           '/auth/signup',
@@ -177,6 +201,10 @@ Press Ctrl+C to stop the server gracefully.
         ];
         if (publicRoutes.contains(request.url.path)) {
           print('[AUTH] Public route allowed: ${request.url.path}');
+=======
+        final publicRoutes = ['/health', '/auth/signup', '/auth/login'];
+        if (publicRoutes.contains(request.url.path)) {
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
           return innerHandler(request);
         }
 
@@ -229,9 +257,13 @@ Press Ctrl+C to stop the server gracefully.
       final result = await AuthService.signup(email, password);
       if (result['success'] != true) {
         return _jsonErrorResponse(
+<<<<<<< HEAD
           400,
           result['error'] as String? ?? 'Signup failed',
         );
+=======
+            400, result['error'] as String? ?? 'Signup failed');
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
       }
 
       return Response.ok(
@@ -268,9 +300,13 @@ Press Ctrl+C to stop the server gracefully.
       final result = await AuthService.login(email, password);
       if (result['success'] != true) {
         return _jsonErrorResponse(
+<<<<<<< HEAD
           401,
           result['error'] as String? ?? 'Login failed',
         );
+=======
+            401, result['error'] as String? ?? 'Login failed');
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
       }
 
       return Response.ok(
@@ -313,9 +349,13 @@ Press Ctrl+C to stop the server gracefully.
       final result = await AuthService.refreshToken(token);
       if (result['success'] != true) {
         return _jsonErrorResponse(
+<<<<<<< HEAD
           401,
           result['error'] as String? ?? 'Token refresh failed',
         );
+=======
+            401, result['error'] as String? ?? 'Token refresh failed');
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
       }
 
       return Response.ok(
@@ -356,11 +396,14 @@ Press Ctrl+C to stop the server gracefully.
   /// Handler: List documents in collection
   Future<Response> _listDocsHandler(Request request) async {
     return crud.handleListDocuments(request);
+<<<<<<< HEAD
   }
 
   /// Handler: Admin SQL query block (supports write/destructive, max 5 statements)
   Future<Response> _adminSqlQueryHandler(Request request) async {
     return crud.handleAdminSqlQuery(request);
+=======
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
   }
 
   /// Handler: Upload media
@@ -380,9 +423,13 @@ Press Ctrl+C to stop the server gracefully.
       final destinationDocId = multipart.fields['destination_doc_id'];
       if (destinationCollection == null || destinationDocId == null) {
         return _jsonErrorResponse(
+<<<<<<< HEAD
           400,
           'Destination collection and document required',
         );
+=======
+            400, 'Destination collection and document required');
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
       }
 
       if (multipart.fileBytes.isEmpty) {
@@ -401,6 +448,7 @@ Press Ctrl+C to stop the server gracefully.
       }
 
       if (!RuleEngine.canWrite(userId, user.role, collection)) {
+<<<<<<< HEAD
         await database.logAction(
           AuditLog(
             userId: userId,
@@ -411,6 +459,16 @@ Press Ctrl+C to stop the server gracefully.
             errorMessage: 'Permission denied',
           ),
         );
+=======
+        await database.logAction(AuditLog(
+          userId: userId,
+          action: 'UPLOAD',
+          resourceType: 'media',
+          resourceId: destinationDocId,
+          status: 'failed',
+          errorMessage: 'Permission denied',
+        ));
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
         return _jsonErrorResponse(403, 'Permission denied');
       }
 
@@ -431,6 +489,7 @@ Press Ctrl+C to stop the server gracefully.
       );
 
       await database.createMediaBlob(media);
+<<<<<<< HEAD
       await database.logAction(
         AuditLog(
           userId: userId,
@@ -440,6 +499,15 @@ Press Ctrl+C to stop the server gracefully.
           status: 'success',
         ),
       );
+=======
+      await database.logAction(AuditLog(
+        userId: userId,
+        action: 'UPLOAD',
+        resourceType: 'media',
+        resourceId: media.id,
+        status: 'success',
+      ));
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
 
       return Response.ok(
         jsonEncode({
@@ -562,6 +630,7 @@ Press Ctrl+C to stop the server gracefully.
     return request.context['claims'] as Map<String, dynamic>?;
   }
 
+<<<<<<< HEAD
   /// Handler: Get recent logs
   Future<Response> _recentLogsHandler(Request request) async {
     try {
@@ -618,6 +687,8 @@ Press Ctrl+C to stop the server gracefully.
     }
   }
 
+=======
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
   /// Helper: Parse multipart form data
   /// WARNING: This is a simplified implementation for demonstration purposes.
   /// For production use with binary files (images, videos, etc.), use a proper
@@ -633,7 +704,11 @@ Press Ctrl+C to stop the server gracefully.
       // Extract boundary from content-type
       final boundary = contentType.split('boundary=').last;
       final body = await request.readAsString();
+<<<<<<< HEAD
 
+=======
+      
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
       // Parse multipart data
       final parts = body.split('--$boundary');
       final fields = <String, String>{};
@@ -653,16 +728,24 @@ Press Ctrl+C to stop the server gracefully.
 
         // Check if it's a file
         if (headers.contains('filename=')) {
+<<<<<<< HEAD
           final fileNameMatch = RegExp(
             r'filename="([^"]+)"',
           ).firstMatch(headers);
+=======
+          final fileNameMatch = RegExp(r'filename="([^"]+)"').firstMatch(headers);
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
           if (fileNameMatch != null) {
             fileName = fileNameMatch.group(1)!;
           }
 
+<<<<<<< HEAD
           final contentTypeMatch = RegExp(
             r'Content-Type:\s*([^\r\n]+)',
           ).firstMatch(headers);
+=======
+          final contentTypeMatch = RegExp(r'Content-Type:\s*([^\r\n]+)').firstMatch(headers);
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
           if (contentTypeMatch != null) {
             mimeType = contentTypeMatch.group(1)!.trim();
           }

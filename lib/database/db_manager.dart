@@ -21,6 +21,12 @@ extension RowToMap on Row {
   }
 }
 
+extension RowToMap on Row {
+  Map<String, Object?> toMap() {
+    return Map<String, Object?>.from(this);
+  }
+}
+
 /// Main database manager class
 /// Handles all database connections, queries, and transactions
 class DatabaseManager {
