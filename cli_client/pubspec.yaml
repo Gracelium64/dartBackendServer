@@ -1,0 +1,17 @@
+name: shadow_app_cli_client
+description: "Command-line client for Shadow App Backend Server. Execute CRUD operations and manage data from your terminal."
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  http: ^1.1.0
+  args: ^2.4.0
+  intl: ^0.18.0
+  path: ^1.8.0
+  dio: ^5.3.1
+
+dev_dependencies:
+  analyzer: ^5.0.0

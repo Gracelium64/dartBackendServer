@@ -3,31 +3,59 @@
 
 import 'package:shadow_app_backend/database/db_manager.dart';
 import 'package:shadow_app_backend/auth/auth_service.dart';
+import 'package:shadow_app_backend/database/models.dart';
+import 'package:shadow_app_backend/logging/logger.dart';
 import 'terminal_ui.dart';
 
 /// List all users in a formatted table
 Future<void> listUsers(DatabaseManager database) async {
-  final users = await database.getAllUsers();
+  try {
+    final users = await database.getAllUsers();
 
-  if (users.isEmpty) {
-    TerminalUI.printWarning('No users found');
-    return;
+    if (users.isEmpty) {
+      TerminalUI.printWarning('No users found');
+      await logger.logAction(AuditLog(
+        userId: 'admin_console',
+        action: 'LIST',
+        resourceType: 'user',
+        resourceId: 'all',
+        status: 'success',
+      ));
+      return;
+    }
+
+    final rows = users.map((user) {
+      return [
+        user.id,
+        user.email,
+        user.role,
+        user.createdAt.toString().substring(0, 19),
+      ];
+    }).toList();
+
+    TerminalUI.printTable(
+      ['ID', 'Email', 'Role', 'Created'],
+      rows,
+    );
+    TerminalUI.printSuccess('Total users: ${users.length}');
+    await logger.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'LIST',
+      resourceType: 'user',
+      resourceId: 'all',
+      status: 'success',
+    ));
+  } catch (e) {
+    await logger.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'LIST',
+      resourceType: 'user',
+      resourceId: 'all',
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
+    rethrow;
   }
-
-  final rows = users.map((user) {
-    return [
-      user.id,
-      user.email,
-      user.role,
-      user.createdAt.toString().substring(0, 19),
-    ];
-  }).toList();
-
-  TerminalUI.printTable(
-    ['ID', 'Email', 'Role', 'Created'],
-    rows,
-  );
-  TerminalUI.printSuccess('Total users: ${users.length}');
 }
 
 /// Add a new user interactively
@@ -39,7 +67,12 @@ Future<void> addUser(DatabaseManager database) async {
   final role = TerminalUI.prompt('Role (user/admin)', required: false);
 
   try {
-    await AuthService.signup(email, password);
+    final result = await AuthService.signup(email, password);
+    if (result['success'] != true) {
+      TerminalUI.printError(
+          'Failed to create user: ${result['error'] ?? 'Unknown error'}');
+      return;
+    }
 
     // If role is not default 'user', update it
     if (role.isNotEmpty && role != 'user') {

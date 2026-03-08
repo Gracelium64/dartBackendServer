@@ -4,6 +4,7 @@
 import 'dart:convert';
 import 'package:shadow_app_backend/database/db_manager.dart';
 import 'package:shadow_app_backend/database/models.dart';
+import 'package:shadow_app_backend/logging/logger.dart';
 import 'terminal_ui.dart';
 import 'formatting.dart';
 
@@ -13,6 +14,13 @@ Future<void> listCollections(DatabaseManager database) async {
 
   if (collections.isEmpty) {
     TerminalUI.printWarning('No collections found');
+    await logger.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'LIST',
+      resourceType: 'collection',
+      resourceId: 'all',
+      status: 'success',
+    ));
     return;
   }
 
@@ -30,6 +38,13 @@ Future<void> listCollections(DatabaseManager database) async {
     rows,
   );
   TerminalUI.printSuccess('Total collections: ${collections.length}');
+  await logger.logAction(AuditLog(
+    userId: 'admin_console',
+    action: 'LIST',
+    resourceType: 'collection',
+    resourceId: 'all',
+    status: 'success',
+  ));
 }
 
 /// Create a new collection
@@ -116,6 +131,14 @@ Future<void> readDocument(DatabaseManager database) async {
     final doc = await database.getDocument(docId);
     if (doc == null) {
       TerminalUI.printError('Document not found');
+      await logger.logAction(AuditLog(
+        userId: 'admin_console',
+        action: 'READ',
+        resourceType: 'document',
+        resourceId: docId,
+        status: 'failed',
+        errorMessage: 'Document not found',
+      ));
       return;
     }
 
@@ -128,7 +151,22 @@ Future<void> readDocument(DatabaseManager database) async {
     print('Data:');
     print(JsonEncoder.withIndent('  ').convert(doc.data));
     print('=' * 70);
+    await logger.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'READ',
+      resourceType: 'document',
+      resourceId: doc.id,
+      status: 'success',
+    ));
   } catch (e) {
+    await logger.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'READ',
+      resourceType: 'document',
+      resourceId: docId,
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
     TerminalUI.printError('Failed to read document: $e');
   }
 }
@@ -204,6 +242,13 @@ Future<void> listDocuments(DatabaseManager database) async {
 
     if (docs.isEmpty) {
       TerminalUI.printWarning('No documents found');
+      await logger.logAction(AuditLog(
+        userId: 'admin_console',
+        action: 'LIST',
+        resourceType: 'document',
+        resourceId: collectionId,
+        status: 'success',
+      ));
       return;
     }
 
@@ -222,7 +267,22 @@ Future<void> listDocuments(DatabaseManager database) async {
       rows,
     );
     TerminalUI.printSuccess('Found ${docs.length} documents');
+    await logger.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'LIST',
+      resourceType: 'document',
+      resourceId: collectionId,
+      status: 'success',
+    ));
   } catch (e) {
+    await logger.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'LIST',
+      resourceType: 'document',
+      resourceId: collectionId,
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
     TerminalUI.printError('Failed to list documents: $e');
   }
 }

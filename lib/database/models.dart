@@ -227,6 +227,8 @@ class AuditLog {
   final String resourceId;
   final String status; // 'success', 'failed'
   final String? errorMessage;
+  final String?
+      details; // Exact CRUD command/parameters e.g. "CREATE user john admin" or "UPDATE document {id: doc123, ...}"
   final DateTime timestamp;
 
   AuditLog({
@@ -237,6 +239,7 @@ class AuditLog {
     required this.resourceId,
     required this.status,
     this.errorMessage,
+    this.details,
     DateTime? timestamp,
   })  : id = id ?? const Uuid().v4(),
         timestamp = timestamp ?? DateTime.now();
@@ -249,6 +252,7 @@ class AuditLog {
         'resource_id': resourceId,
         'status': status,
         'error_message': errorMessage,
+        'details': details,
         'timestamp': timestamp.millisecondsSinceEpoch,
       };
 
@@ -261,6 +265,7 @@ class AuditLog {
       resourceId: json['resource_id'] as String,
       status: json['status'] as String,
       errorMessage: json['error_message'] as String?,
+      details: json['details'] as String?,
       timestamp:
           DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int? ?? 0),
     );
@@ -268,6 +273,6 @@ class AuditLog {
 
   /// Format for log display (tab-separated)
   String toLogFormat() {
-    return '${timestamp.toIso8601String()} | $userId | $action | $resourceType:$resourceId | $status | ${errorMessage ?? '-'}';
+    return '${timestamp.toIso8601String()} | $userId | $action | $resourceType:$resourceId | $status | ${errorMessage ?? '-'} | ${details ?? '-'}';
   }
 }

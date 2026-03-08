@@ -13,6 +13,7 @@ import 'package:path/path.dart' as path;
 import 'models.dart';
 import 'migrations.dart';
 import '../config.dart';
+import '../logging/logger.dart';
 
 extension RowToMap on Row {
   Map<String, Object?> toMap() {
@@ -89,9 +90,22 @@ class DatabaseManager {
       stmt.dispose();
 
       print('[DB] User created: ${user.email}');
+      await _logDbAction(
+        action: 'CREATE',
+        resourceType: 'user',
+        resourceId: user.id,
+        status: 'success',
+      );
       return user;
     } catch (e) {
       print('[DB ERROR] Failed to create user: $e');
+      await _logDbAction(
+        action: 'CREATE',
+        resourceType: 'user',
+        resourceId: user.id,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -154,9 +168,23 @@ class DatabaseManager {
       ]);
       stmt.dispose();
 
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'user_role',
+        resourceId: userId,
+        status: 'success',
+      );
+
       return await getUserById(userId);
     } catch (e) {
       print('[DB ERROR] Failed to update user role: $e');
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'user_role',
+        resourceId: userId,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -167,8 +195,22 @@ class DatabaseManager {
       final stmt = _db.prepare('DELETE FROM users WHERE id = ?');
       stmt.execute([userId]);
       stmt.dispose();
+
+      await _logDbAction(
+        action: 'DELETE',
+        resourceType: 'user',
+        resourceId: userId,
+        status: 'success',
+      );
     } catch (e) {
       print('[DB ERROR] Failed to delete user: $e');
+      await _logDbAction(
+        action: 'DELETE',
+        resourceType: 'user',
+        resourceId: userId,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -192,9 +234,22 @@ class DatabaseManager {
       stmt.dispose();
 
       print('[DB] Collection created: ${collection.name}');
+      await _logDbAction(
+        action: 'CREATE',
+        resourceType: 'collection',
+        resourceId: collection.id,
+        status: 'success',
+      );
       return collection;
     } catch (e) {
       print('[DB ERROR] Failed to create collection: $e');
+      await _logDbAction(
+        action: 'CREATE',
+        resourceType: 'collection',
+        resourceId: collection.id,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -269,9 +324,23 @@ class DatabaseManager {
       ]);
       stmt.dispose();
 
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'collection_rules',
+        resourceId: collectionId,
+        status: 'success',
+      );
+
       return await getCollection(collectionId);
     } catch (e) {
       print('[DB ERROR] Failed to update collection rules: $e');
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'collection_rules',
+        resourceId: collectionId,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -295,9 +364,22 @@ class DatabaseManager {
       stmt.dispose();
 
       print('[DB] Document created: ${document.id}');
+      await _logDbAction(
+        action: 'CREATE',
+        resourceType: 'document',
+        resourceId: document.id,
+        status: 'success',
+      );
       return document;
     } catch (e) {
       print('[DB ERROR] Failed to create document: $e');
+      await _logDbAction(
+        action: 'CREATE',
+        resourceType: 'document',
+        resourceId: document.id,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -364,9 +446,22 @@ class DatabaseManager {
       stmt.dispose();
 
       print('[DB] Document updated: ${document.id}');
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'document',
+        resourceId: document.id,
+        status: 'success',
+      );
       return document;
     } catch (e) {
       print('[DB ERROR] Failed to update document: $e');
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'document',
+        resourceId: document.id,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -386,8 +481,21 @@ class DatabaseManager {
       deleteDocStmt.dispose();
 
       print('[DB] Document deleted: $documentId');
+      await _logDbAction(
+        action: 'DELETE',
+        resourceType: 'document',
+        resourceId: documentId,
+        status: 'success',
+      );
     } catch (e) {
       print('[DB ERROR] Failed to delete document: $e');
+      await _logDbAction(
+        action: 'DELETE',
+        resourceType: 'document',
+        resourceId: documentId,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -415,9 +523,22 @@ class DatabaseManager {
       stmt.dispose();
 
       print('[DB] Media blob created: ${media.id}');
+      await _logDbAction(
+        action: 'CREATE',
+        resourceType: 'media_blob',
+        resourceId: media.id,
+        status: 'success',
+      );
       return media;
     } catch (e) {
       print('[DB ERROR] Failed to create media blob: $e');
+      await _logDbAction(
+        action: 'CREATE',
+        resourceType: 'media_blob',
+        resourceId: media.id,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -461,8 +582,21 @@ class DatabaseManager {
       stmt.dispose();
 
       print('[DB] Media blob deleted: $mediaId');
+      await _logDbAction(
+        action: 'DELETE',
+        resourceType: 'media_blob',
+        resourceId: mediaId,
+        status: 'success',
+      );
     } catch (e) {
       print('[DB ERROR] Failed to delete media blob: $e');
+      await _logDbAction(
+        action: 'DELETE',
+        resourceType: 'media_blob',
+        resourceId: mediaId,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
       rethrow;
     }
   }
@@ -587,6 +721,29 @@ class DatabaseManager {
     } catch (e) {
       print('[DB ERROR] JSON decode error: $e');
       return {};
+    }
+  }
+
+  Future<void> _logDbAction({
+    required String action,
+    required String resourceType,
+    required String resourceId,
+    required String status,
+    String? errorMessage,
+  }) async {
+    try {
+      await logger.logAction(
+        AuditLog(
+          userId: 'system',
+          action: action,
+          resourceType: resourceType,
+          resourceId: resourceId,
+          status: status,
+          errorMessage: errorMessage,
+        ),
+      );
+    } catch (_) {
+      // Never allow logging failures to break DB operations.
     }
   }
 }

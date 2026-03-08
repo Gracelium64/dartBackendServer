@@ -78,6 +78,8 @@ class ServerLogger {
       // Write to file
       final logEntry = _formatLogEntry(action);
       _logSink.writeln(logEntry);
+      // Ensure tail readers can see the entry immediately.
+      await _logSink.flush();
 
       // Check if we need to rotate log file (midnight)
       _checkLogRotation();
@@ -95,6 +97,7 @@ class ServerLogger {
       '${action.resourceType}:${action.resourceId}',
       action.status,
       action.errorMessage ?? '-',
+      action.details ?? '-',
     ].join('\t');
   }
 

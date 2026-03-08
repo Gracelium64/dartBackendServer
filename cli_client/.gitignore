@@ -1,0 +1,22 @@
+# Dart build output
+build/
+.dart_tool/
+.packages
+*.lock
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp
+*.tmp
+.env
+.env.local

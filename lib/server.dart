@@ -135,6 +135,23 @@ Press Ctrl+C to stop the server gracefully.
         final startTime = DateTime.now();
         final response = await innerHandler(request);
         final duration = DateTime.now().difference(startTime);
+        final claims = request.context['claims'] as Map<String, dynamic>?;
+        final userId = claims?['sub']?.toString() ?? 'anonymous';
+        final status = response.statusCode >= 400 ? 'failed' : 'success';
+        final resourcePath = '/${request.url.path}';
+
+        await logger.logAction(
+          AuditLog(
+            userId: userId,
+            action: 'HTTP_${request.method}',
+            resourceType: 'http',
+            resourceId: resourcePath,
+            status: status,
+            errorMessage: status == 'failed'
+                ? 'HTTP ${response.statusCode} (${duration.inMilliseconds}ms)'
+                : null,
+          ),
+        );
 
         print(
           '[${request.method}] ${request.url.path} → ${response.statusCode} (${duration.inMilliseconds}ms)',

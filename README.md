@@ -75,12 +75,18 @@ await ShadowApp.collection('notes').delete(doc.id);
 
 ## 📖 Complete Documentation
 
-| File                                                              | For          | Contains                                                  |
-| ----------------------------------------------------------------- | ------------ | --------------------------------------------------------- |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md)                           | Developers   | System design, data models, database schema, API contract |
-| [OPERATOR_MANUAL.md](docs/OPERATOR_MANUAL.md)                     | Operators    | Setup, running, monitoring, troubleshooting               |
-| [FLUTTER_SDK_GUIDE.md](docs/FLUTTER_SDK_GUIDE.md)                 | Flutter Devs | SDK usage, examples, learning notes                       |
-| [MAINTENANCE_SCALING_GUIDE.md](docs/MAINTENANCE_SCALING_GUIDE.md) | DevOps       | Backup, scaling, deployment strategies                    |
+| File                                                              | For          | Contains                                                                               |
+| ----------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------- |
+| [SDK_GUIDE.md](docs/SDK_GUIDE.md)                                 | All Users    | **Multi-SDK integration guide**: Dart/Flutter, CLI, REST API, cURL, JavaScript, Python |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md)                           | Developers   | System design, data models, database schema, API contract                              |
+| [OPERATOR_MANUAL.md](docs/OPERATOR_MANUAL.md)                     | Operators    | Setup, running, monitoring, troubleshooting                                            |
+| [FLUTTER_SDK_GUIDE.md](docs/FLUTTER_SDK_GUIDE.md)                 | Flutter Devs | SDK usage, examples, learning notes                                                    |
+| [MAINTENANCE_SCALING_GUIDE.md](docs/MAINTENANCE_SCALING_GUIDE.md) | DevOps       | Backup, scaling, deployment strategies                                                 |
+
+### Remote Access Tools
+
+- **CLI Client**: Command-line tool for remote server access ([cli_client/README.md](cli_client/README.md))
+- **REST API**: Direct HTTP endpoints for any language ([see SDK_GUIDE.md](docs/SDK_GUIDE.md#rest-api))
 
 ## 🏗️ Project Structure
 
