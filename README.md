@@ -1,4 +1,4 @@
-# Shadow App Backend
+# Shadow App Backend Server`
 
 A **Dart-only learning backend server** for Flutter developers. Write your own backend, understand how it works, and deploy with confidence.
 
