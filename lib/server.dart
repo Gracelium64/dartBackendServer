@@ -175,8 +175,12 @@ Press Ctrl+C to stop the server gracefully.
           '/api/logs/recent',
           '/api/logs/stream',
         ];
-        if (publicRoutes.contains(request.url.path)) {
-          print('[AUTH] Public route allowed: ${request.url.path}');
+
+        // Shelf request.url.path does not include a leading slash.
+        final requestPath = '/${request.url.path}';
+
+        if (publicRoutes.contains(requestPath)) {
+          print('[AUTH] Public route allowed: $requestPath');
           return innerHandler(request);
         }
 

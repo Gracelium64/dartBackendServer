@@ -11,6 +11,10 @@ A command-line tool for accessing your Shadow App Backend Server remotely from a
 - **Server URL** (e.g., `http://192.168.1.100:8080`)
 - **Credentials** (email/password or admin key)
 
+/*
+http://192.168.0.102:8080
+*/
+
 ### 2. Setup
 
 Clone or download the CLI client:

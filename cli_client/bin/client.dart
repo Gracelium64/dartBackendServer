@@ -107,7 +107,16 @@ class ShadowAppClient {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        _token = data['token'] as String;
+        final nestedData = data['data'];
+        final token = data['token'] ??
+            (nestedData is Map<String, dynamic> ? nestedData['token'] : null);
+
+        if (token is! String || token.isEmpty) {
+          print('❌ Login failed: token missing in server response');
+          return false;
+        }
+
+        _token = token;
         print('✓ Logged in as $email');
         return true;
       } else {

@@ -145,3 +145,5 @@ class SchemaMigration {
     print('[DB] All migrations completed');
   }
 }
+
+
