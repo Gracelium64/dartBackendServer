@@ -19,6 +19,7 @@ Build a backend server written **entirely in Dart** that teaches you backend dev
 
 - **Authentication**: Signup, login, JWT tokens, token refresh with password hashing
 - **Database**: SQLite with CRUD operations on documents in collections
+- **Advanced Querying**: Admin SQL query blocks (read + write/destructive, up to 5 statements)
 - **Media Storage**: Upload, compress, and store images/videos directly in database
 - **Access Control**: Per-collection permission rules (read/write/public)
 - **Live Logging**: Real-time audit trail of all database actions with log-tail feature
@@ -174,11 +175,66 @@ GET    /api/collections/{id}/documents/{docId}  # Read document
 PUT    /api/collections/{id}/documents/{docId}  # Update document
 DELETE /api/collections/{id}/documents/{docId}  # Delete document
 GET    /api/collections/{id}/documents          # List documents
+POST   /api/admin/sql-query                     # Admin SQL query block (up to 5 statements)
 
 POST   /api/media/upload                         # Upload media
 GET    /api/media/download/{mediaId}            # Download media
 
 GET    /health                                   # Health check
+```
+
+### SQL-like Query Examples
+
+```bash
+# Remote client (admin login required)
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT id, owner_id FROM documents LIMIT 10"
+
+# Filter by owner/user
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT id, owner_id FROM documents WHERE owner_id = ? LIMIT 10" \
+  --sql-params '["user123"]'
+
+# Destructive/write SQL (admin only)
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "UPDATE users SET role='admin' WHERE email='ops@example.com'"
+
+# Multi-statement SQL (max 5 statements)
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5"
+
+# Row cap override for current client run/session
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT * FROM documents" \
+  --sql-cap 1000
+
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT * FROM documents" \
+  --sql-cap-off
 ```
 
 ## 🧪 Testing

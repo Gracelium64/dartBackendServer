@@ -32,6 +32,7 @@ The Shadow App Flutter SDK is a Dart-native client library for integrating with 
 - 🔐 **Authentication** - JWT-based auth with automatic token refresh
 - 📄 **Document CRUD** - Full create, read, update, delete operations
 - 📁 **Media Handling** - File upload/download with compression
+- 🧠 **Admin SQL Blocks** - Admin-only SQL execution (up to 5 statements)
 - 💾 **Offline Support** - Local caching with server sync
 - 🎯 **Singleton Pattern** - Simple static method access
 - 🛠️ **Developer Friendly** - Intuitive API similar to Firebase
@@ -811,6 +812,7 @@ Behind the scenes:
 4. **Token Storage**: SDK stores token locally in `SharedPreferences` (Android) or `Keychain` (iOS)
 
 5. **Token Usage**: Every API request includes the token in the `Authorization` header:
+
    ```
    Authorization: Bearer eyJhbGc...
    ```
@@ -1091,6 +1093,46 @@ Future<Uint8List> download(String mediaId) async
 
 // Get metadata
 Future<MediaMetadata> getMetadata(String mediaId) async
+```
+
+### AdminSqlService (Admin Only)
+
+Advanced SQL API:
+
+```dart
+// Execute SQL query block (up to 5 statements)
+Future<AdminSqlResponse> execute(
+  String sql, {
+  List<Object?> params = const [],
+  int? maxRowsOverride,
+  bool disableRowCapOverride = false,
+})
+
+// Session-level row cap controls
+void setSessionRowCap(int maxRows)
+void disableSessionRowCap()
+void resetSessionRowCapToDefault()
+```
+
+Example usage:
+
+```dart
+// Ensure logged in user is admin
+await ShadowApp.auth.login(email: 'admin@example.com', password: 'pass');
+
+// Optional session override
+ShadowApp.adminSql.setSessionRowCap(1000);
+
+final result = await ShadowApp.adminSql.execute(
+  "DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5",
+);
+
+for (final statement in result.statements) {
+  print('Statement #${statement.statementIndex} -> ${statement.rowCount} row(s)');
+}
+
+// Disable cap for current SDK session if needed
+ShadowApp.adminSql.disableSessionRowCap();
 ```
 
 ---

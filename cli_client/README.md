@@ -175,6 +175,90 @@ dart bin/client.dart \
   --view-logs 50
 ```
 
+### Advanced SQL Queries (Admin)
+
+Use `--sql` to run SQL query blocks (up to 5 statements). This includes read and destructive/write SQL for admin users.
+
+```bash
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT id, owner_id FROM documents LIMIT 10"
+```
+
+With bind parameters:
+
+```bash
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT id, owner_id FROM documents WHERE owner_id = ? LIMIT 10" \
+  --sql-params '["user123"]'
+```
+
+JSON attribute example:
+
+```bash
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT json_extract(data, '\$.status') AS status, COUNT(*) AS total FROM documents GROUP BY status"
+```
+
+Destructive/write query example:
+
+```bash
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "UPDATE users SET role='admin' WHERE email='ops@example.com'"
+```
+
+Multi-statement example (max 5):
+
+```bash
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5"
+```
+
+Row cap override for current client run/session:
+
+```bash
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT * FROM documents" \
+  --sql-cap 1000
+
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT * FROM documents" \
+  --sql-cap-off
+```
+
+Safety rules:
+
+- Maximum 5 statements per request.
+- SQL is admin-only.
+- Result rows are capped by default; use `--sql-cap` or `--sql-cap-off` per current run.
+
 ## Admin Operations
 
 For admin-only operations, use the `--admin-key` flag instead of logging in:

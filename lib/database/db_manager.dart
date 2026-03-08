@@ -500,6 +500,134 @@ class DatabaseManager {
     }
   }
 
+  // === ADVANCED QUERY OPERATIONS ===
+
+  /// Execute admin SQL statements (read + write/destructive) with statement limit.
+  ///
+  /// Rules:
+  /// - Maximum 5 statements per execution.
+  /// - Bind parameters are supported only for single-statement execution.
+  /// - For row-producing statements (SELECT/WITH/PRAGMA), result rows can be capped.
+  Future<List<Map<String, Object?>>> executeAdminSql(
+    String sql, {
+    List<Object?> params = const [],
+    int? maxRows,
+    bool disableRowCap = false,
+  }) async {
+    final normalizedSql = sql.trim();
+    if (normalizedSql.isEmpty) {
+      throw ArgumentError('SQL cannot be empty.');
+    }
+
+    final statements = _splitSqlStatements(normalizedSql);
+    if (statements.isEmpty) {
+      throw ArgumentError('No valid SQL statement found.');
+    }
+    if (statements.length > 5) {
+      throw ArgumentError(
+          'Maximum 5 SQL statements are allowed per execution.');
+    }
+    if (statements.length > 1 && params.isNotEmpty) {
+      throw ArgumentError(
+        'Bind params are only supported for single-statement execution.',
+      );
+    }
+
+    final results = <Map<String, Object?>>[];
+    final effectiveMaxRows = disableRowCap ? null : (maxRows ?? 200);
+
+    try {
+      for (var i = 0; i < statements.length; i++) {
+        final statement = statements[i];
+        final keyword = _statementKeyword(statement);
+        final isReadStatement =
+            keyword == 'select' || keyword == 'with' || keyword == 'pragma';
+
+        if (isReadStatement) {
+          final stmt = _db.prepare(statement);
+          final rows = stmt.select(i == 0 ? params : const []);
+          stmt.dispose();
+
+          final mappedRows = rows.map((r) => r.toMap()).toList();
+          final cappedRows = effectiveMaxRows == null
+              ? mappedRows
+              : mappedRows.take(effectiveMaxRows).toList();
+
+          results.add({
+            'statement_index': i + 1,
+            'statement_type': keyword,
+            'rows': cappedRows,
+            'row_count': cappedRows.length,
+            'row_cap_applied': effectiveMaxRows != null,
+          });
+          continue;
+        }
+
+        final stmt = _db.prepare(statement);
+        stmt.execute(i == 0 ? params : const []);
+        stmt.dispose();
+
+        results.add({
+          'statement_index': i + 1,
+          'statement_type': keyword,
+          'rows': const <Map<String, Object?>>[],
+          'row_count': 0,
+          'row_cap_applied': false,
+        });
+      }
+
+      return results;
+    } catch (e) {
+      print('[DB ERROR] Failed to execute admin SQL: $e');
+      rethrow;
+    }
+  }
+
+  /// Split SQL into semicolon-delimited statements, respecting simple quoted strings.
+  List<String> _splitSqlStatements(String sql) {
+    final statements = <String>[];
+    final buffer = StringBuffer();
+
+    bool inSingleQuote = false;
+    bool inDoubleQuote = false;
+
+    for (var i = 0; i < sql.length; i++) {
+      final ch = sql[i];
+
+      if (ch == "'" && !inDoubleQuote) {
+        final escaped = i > 0 && sql[i - 1] == '\\';
+        if (!escaped) inSingleQuote = !inSingleQuote;
+      } else if (ch == '"' && !inSingleQuote) {
+        final escaped = i > 0 && sql[i - 1] == '\\';
+        if (!escaped) inDoubleQuote = !inDoubleQuote;
+      }
+
+      if (ch == ';' && !inSingleQuote && !inDoubleQuote) {
+        final statement = buffer.toString().trim();
+        if (statement.isNotEmpty) {
+          statements.add(statement);
+        }
+        buffer.clear();
+        continue;
+      }
+
+      buffer.write(ch);
+    }
+
+    final tail = buffer.toString().trim();
+    if (tail.isNotEmpty) {
+      statements.add(tail);
+    }
+
+    return statements;
+  }
+
+  String _statementKeyword(String statement) {
+    final normalized = statement.trimLeft().toLowerCase();
+    final firstToken = normalized.split(RegExp(r'\s+')).first;
+    return firstToken;
+  }
+
   // === MEDIA OPERATIONS ===
 
   /// Store media blob

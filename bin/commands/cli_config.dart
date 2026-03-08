@@ -133,9 +133,24 @@ Admin Mode:
     - User management (list, add, delete, change roles)
     - Audit log viewing
     - CRUD operations (collections, documents)
+    - SQL query blocks via CRUD console (`QUERY <SQL>`)
     - System statistics
     - Permission rules configuration
     - Report generation
+
+SQL-LIKE QUERY EXAMPLES (inside admin -> CRUD -> Raw CRUD Commands):
+  QUERY SELECT id, owner_id FROM documents LIMIT 10
+  QUERY UPDATE users SET role='admin' WHERE email='ops@example.com'
+  QUERY DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5
+  QUERY SELECT id FROM documents WHERE owner_id = 'user123' LIMIT 10
+  QUERY SELECT json_extract(data, '\$.status') AS status, COUNT(*) AS total FROM documents GROUP BY status
+  QUERY CAP 500
+  QUERY CAP OFF
+
+  Notes:
+    - Up to 5 SQL statements can be sent in one QUERY command
+    - Destructive/write SQL is allowed for admin users
+    - Row cap defaults to 200 and can be overridden per current session
 
 WORKFLOW EXAMPLE:
 

@@ -488,3 +488,106 @@ Future<Response> handleListDocuments(Request request) async {
     );
   }
 }
+
+/// Execute admin-only SQL query block.
+///
+/// Supports up to 5 SQL statements (including destructive/write statements).
+/// Row cap can be overridden per request.
+Future<Response> handleAdminSqlQuery(Request request) async {
+  try {
+    final userClaims = await _getUserFromRequest(request);
+    if (userClaims == null) {
+      return _jsonErrorResponse(401, 'Not authenticated');
+    }
+
+    final userId = userClaims['sub'] as String;
+    final user = await database.getUserById(userId);
+    if (user == null) {
+      return _jsonErrorResponse(403, 'User not found');
+    }
+
+    if (user.role != 'admin') {
+      await database.logAction(AuditLog(
+        userId: userId,
+        action: 'QUERY',
+        resourceType: 'sql',
+        resourceId: 'admin-sql',
+        status: 'failed',
+        errorMessage: 'Admin role required',
+      ));
+      return _jsonErrorResponse(403, 'Admin role required');
+    }
+
+    final rawBody = await request.readAsString();
+    if (rawBody.trim().isEmpty) {
+      return _jsonErrorResponse(400, 'Request body is required');
+    }
+
+    final body = jsonDecode(rawBody) as Map<String, dynamic>;
+    final sql = body['sql'] as String?;
+    final rawParams = body['params'];
+    final params =
+        rawParams is List ? List<Object?>.from(rawParams) : <Object?>[];
+    final maxRowsRaw = body['max_rows'];
+    final disableRowCap = body['disable_row_cap'] == true;
+
+    int? maxRows;
+    if (maxRowsRaw != null) {
+      if (maxRowsRaw is! num) {
+        return _jsonErrorResponse(400, 'Field "max_rows" must be a number');
+      }
+      final parsed = maxRowsRaw.toInt();
+      if (parsed <= 0) {
+        return _jsonErrorResponse(400, 'Field "max_rows" must be > 0');
+      }
+      maxRows = parsed;
+    }
+
+    if (sql == null || sql.trim().isEmpty) {
+      return _jsonErrorResponse(400, 'Field "sql" is required');
+    }
+
+    final statementResults = await database.executeAdminSql(
+      sql,
+      params: params,
+      maxRows: maxRows,
+      disableRowCap: disableRowCap,
+    );
+
+    var totalRows = 0;
+    for (final entry in statementResults) {
+      final count = entry['row_count'];
+      if (count is int) {
+        totalRows += count;
+      }
+    }
+
+    await database.logAction(AuditLog(
+      userId: userId,
+      action: 'QUERY',
+      resourceType: 'sql',
+      resourceId: 'admin-sql',
+      status: 'success',
+      details:
+          'statements=${statementResults.length} total_rows=$totalRows cap=${disableRowCap ? 'off' : (maxRows ?? 200)}',
+    ));
+
+    return Response.ok(
+      jsonEncode({
+        'success': true,
+        'data': statementResults,
+        'meta': {
+          'statement_count': statementResults.length,
+          'total_rows': totalRows,
+          'max_rows': disableRowCap ? null : (maxRows ?? 200),
+          'disable_row_cap': disableRowCap,
+          'max_statements': 5,
+        },
+        'timestamp': DateTime.now().toIso8601String(),
+      }),
+      headers: {'Content-Type': 'application/json'},
+    );
+  } catch (e) {
+    return _jsonErrorResponse(400, 'SQL query failed: $e');
+  }
+}

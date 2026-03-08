@@ -106,6 +106,23 @@ dart bin/client.dart \
   --password mypass \
   --login \
   --create-collection "posts"
+
+# Admin SQL query block (supports up to 5 statements)
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email admin@example.com \
+  --password adminpass \
+  --login \
+  --sql "DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5"
+
+# Row cap override for this run/session
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email admin@example.com \
+  --password adminpass \
+  --login \
+  --sql "SELECT * FROM documents" \
+  --sql-cap 1000
 ```
 
 See [cli_client/README.md](../cli_client/README.md) for comprehensive documentation.
@@ -123,6 +140,30 @@ http://SERVER_IP:PORT
 ```
 
 Example: `http://192.168.1.100:8080`
+
+### Admin SQL Endpoint
+
+**Endpoint:** `POST /api/admin/sql-query`
+
+**Auth:** Admin JWT required
+
+**Request Body:**
+
+```json
+{
+  "sql": "UPDATE users SET role='admin' WHERE email='ops@example.com'; SELECT * FROM users LIMIT 5",
+  "params": [],
+  "max_rows": 500,
+  "disable_row_cap": false
+}
+```
+
+Notes:
+
+- Supports up to 5 SQL statements.
+- Destructive/write SQL is allowed for admin users.
+- `params` are supported for single-statement execution.
+- `max_rows` and `disable_row_cap` control row cap for this request only.
 
 ### Authentication
 

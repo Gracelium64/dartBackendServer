@@ -189,7 +189,7 @@ Future<void> _adminMenuCrud() async {
   print('5. Update Document');
   print('6. Delete Document');
   print('7. List Documents in Collection');
-  print('8. Raw CRUD Commands (Interactive Shell)');
+  print('8. Raw CRUD + SQL Query Commands (Interactive Shell)');
   print('9. Back');
 
   stdout.write('\nEnter choice (1-9): ');

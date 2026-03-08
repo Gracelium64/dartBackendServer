@@ -111,6 +111,7 @@ Press Ctrl+C to stop the server gracefully.
       _deleteDocHandler,
     );
     _router.get('/api/collections/<collectionId>/documents', _listDocsHandler);
+    _router.post('/api/admin/sql-query', _adminSqlQueryHandler);
 
     // Media endpoints
     _router.post('/api/media/upload', _uploadMediaHandler);
@@ -355,6 +356,11 @@ Press Ctrl+C to stop the server gracefully.
   /// Handler: List documents in collection
   Future<Response> _listDocsHandler(Request request) async {
     return crud.handleListDocuments(request);
+  }
+
+  /// Handler: Admin SQL query block (supports write/destructive, max 5 statements)
+  Future<Response> _adminSqlQueryHandler(Request request) async {
+    return crud.handleAdminSqlQuery(request);
   }
 
   /// Handler: Upload media

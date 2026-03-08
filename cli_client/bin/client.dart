@@ -293,6 +293,54 @@ class ShadowAppClient {
     }
   }
 
+  /// Execute admin SQL (supports up to 5 statements, including destructive).
+  Future<void> runSqlQuery(
+    String sql, {
+    List<Object?> params = const [],
+    int? maxRows,
+    bool disableRowCap = false,
+  }) async {
+    try {
+      final response = await request('POST', '/api/admin/sql-query', body: {
+        'sql': sql,
+        'params': params,
+        'max_rows': maxRows,
+        'disable_row_cap': disableRowCap,
+      });
+
+      if (response.statusCode == 200) {
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final statementResults = (payload['data'] as List?) ?? const [];
+        final meta = payload['meta'] as Map<String, dynamic>? ?? const {};
+
+        print('\n🧠 SQL executed successfully');
+        print(
+            '  Statements: ${meta['statement_count'] ?? statementResults.length}');
+        print('  Total rows: ${meta['total_rows'] ?? 0}');
+        print(
+            '  Row cap: ${meta['disable_row_cap'] == true ? 'OFF' : (meta['max_rows'] ?? 'default')}');
+
+        for (final entry in statementResults) {
+          final item = entry as Map<String, dynamic>;
+          final statementIndex = item['statement_index'];
+          final statementType = item['statement_type'];
+          final rowCount = item['row_count'];
+          final rows = (item['rows'] as List?) ?? const [];
+
+          print(
+              '  • Statement #$statementIndex [$statementType] -> $rowCount row(s)');
+          for (var i = 0; i < rows.length; i++) {
+            print('    [${i + 1}] ${jsonEncode(rows[i])}');
+          }
+        }
+      } else {
+        print('❌ SQL query failed (${response.statusCode}): ${response.body}');
+      }
+    } catch (e) {
+      print('❌ SQL query error: $e');
+    }
+  }
+
   /// Check server health
   Future<void> checkHealth() async {
     try {
@@ -346,6 +394,16 @@ CRUD Operations:
   dart bin/client.dart --server http://localhost:8080 --read-document <collection_id> <document_id>
   dart bin/client.dart --server http://localhost:8080 --update-document <collection_id> <document_id> <json_data>
   dart bin/client.dart --server http://localhost:8080 --delete-document <collection_id> <document_id>
+
+Advanced SQL queries (admin-only, up to 5 statements):
+  dart bin/client.dart --server http://localhost:8080 --email admin@ex.com --password pass --login --sql "SELECT id, owner_id FROM documents LIMIT 5"
+  dart bin/client.dart --server http://localhost:8080 --email admin@ex.com --password pass --login --sql "SELECT * FROM documents WHERE owner_id = ? LIMIT 10" --sql-params "[\"user123\"]"
+  dart bin/client.dart --server http://localhost:8080 --email admin@ex.com --password pass --login --sql "UPDATE users SET role='admin' WHERE email='ops@example.com'"
+  dart bin/client.dart --server http://localhost:8080 --email admin@ex.com --password pass --login --sql "DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5"
+
+Row cap override (current client run/session):
+  dart bin/client.dart --server http://localhost:8080 --email admin@ex.com --password pass --login --sql "SELECT * FROM documents" --sql-cap 1000
+  dart bin/client.dart --server http://localhost:8080 --email admin@ex.com --password pass --login --sql "SELECT * FROM documents" --sql-cap-off
 
 Other:
   dart bin/client.dart --server http://localhost:8080 --health
@@ -443,6 +501,26 @@ Future<void> main(List<String> args) async {
       'view-logs',
       help: 'View audit logs (optional: number of entries)',
       valueHelp: 'count',
+    )
+    ..addOption(
+      'sql',
+      help: 'Execute admin SQL (supports up to 5 statements)',
+      valueHelp: 'query',
+    )
+    ..addOption(
+      'sql-params',
+      help: 'Optional JSON array of SQL bind parameters, e.g. ["user123",10]',
+      valueHelp: 'json_array',
+    )
+    ..addOption(
+      'sql-cap',
+      help: 'Override row cap for this run/session (positive integer)',
+      valueHelp: 'count',
+    )
+    ..addFlag(
+      'sql-cap-off',
+      help: 'Disable SQL row cap for this run/session',
+      negatable: false,
     )
     ..addFlag(
       'help',
@@ -544,8 +622,57 @@ Future<void> main(List<String> args) async {
     final limitStr = results['view-logs'] as String?;
     final limit = limitStr != null ? int.tryParse(limitStr) ?? 50 : 50;
     await client.viewLogs(limit: limit);
+  } else if (results['sql'] != null) {
+    final sql = results['sql'] as String;
+    final paramsRaw = results['sql-params'] as String?;
+    final params = _parseSqlParams(paramsRaw);
+    final capRaw = results['sql-cap'] as String?;
+    final disableCap = results['sql-cap-off'] as bool;
+    final cap = _parseSqlCap(capRaw);
+    if (disableCap && cap != null) {
+      print('❌ Error: use either --sql-cap or --sql-cap-off, not both');
+      exit(1);
+    }
+    await client.runSqlQuery(
+      sql,
+      params: params,
+      maxRows: cap,
+      disableRowCap: disableCap,
+    );
   } else {
     print('ℹ️  No command specified. Use --help for usage information.');
+  }
+}
+
+int? _parseSqlCap(String? raw) {
+  if (raw == null || raw.trim().isEmpty) {
+    return null;
+  }
+
+  final parsed = int.tryParse(raw.trim());
+  if (parsed == null || parsed <= 0) {
+    print('❌ Error: --sql-cap must be a positive integer');
+    exit(1);
+  }
+  return parsed;
+}
+
+List<Object?> _parseSqlParams(String? raw) {
+  if (raw == null || raw.trim().isEmpty) {
+    return const [];
+  }
+
+  try {
+    final parsed = jsonDecode(raw);
+    if (parsed is List) {
+      return List<Object?>.from(parsed);
+    }
+
+    print('❌ Error: --sql-params must be a JSON array');
+    exit(1);
+  } catch (e) {
+    print('❌ Error parsing --sql-params JSON: $e');
+    exit(1);
   }
 }
 

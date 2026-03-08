@@ -4,12 +4,15 @@
 
 import 'dart:io';
 import 'dart:convert';
-import '../../lib/database/db_manager.dart';
-import '../../lib/database/models.dart';
-import '../../lib/logging/logger.dart';
+import 'package:shadow_app_backend/database/db_manager.dart';
+import 'package:shadow_app_backend/database/models.dart';
+import 'package:shadow_app_backend/logging/logger.dart';
 
 /// Raw CRUD REPL - Read-Eval-Print Loop for direct database commands
 Future<void> startCrudRepl(DatabaseManager database) async {
+  int? queryMaxRows = 200;
+  bool queryCapDisabled = false;
+
   print('''
 ╔════════════════════════════════════════════════════════════════════════════════╗
 ║                    Raw CRUD Command Interface                                   ║
@@ -25,7 +28,12 @@ Future<void> startCrudRepl(DatabaseManager database) async {
 ║    DELETE DOCUMENT <documentId>                                                ║
 ║    LIST DOCUMENTS <collectionId>                                               ║
 ║    LIST COLLECTIONS                                                             ║
+║    QUERY <SQL (supports destructive + up to 5 statements)>                      ║
+║    QUERY CAP <number|off|default>                                               ║
 ║    UPDATE RULES <collectionId> <jsonRules>                                     ║
+║                                                                                  ║
+║  SQL Notes: admin-only on API, destructive statements allowed, max 5 stmts      ║
+║  Current session row cap: default 200 (override with QUERY CAP)                 ║
 ║                                                                                  ║
 ║  Type 'help' for more commands or 'exit' to quit                               ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
@@ -71,6 +79,29 @@ Future<void> startCrudRepl(DatabaseManager database) async {
 
         case 'LIST':
           await _handleList(parts.skip(1).toList(), database, input);
+          break;
+
+        case 'QUERY':
+          final sql = input.substring(command.length).trim();
+          if (sql.toUpperCase().startsWith('CAP ')) {
+            await _handleQueryCap(
+              sql.substring(4).trim(),
+              database,
+              input,
+              onSetCap: (newCap, disableCap) {
+                queryMaxRows = newCap;
+                queryCapDisabled = disableCap;
+              },
+            );
+          } else {
+            await _handleQuery(
+              sql,
+              database,
+              input,
+              maxRows: queryMaxRows,
+              disableRowCap: queryCapDisabled,
+            );
+          }
           break;
 
         default:
@@ -122,6 +153,23 @@ DOCUMENT OPERATIONS:
   
   LIST DOCUMENTS <collectionId>
     Shows all documents in a collection
+
+ADVANCED SQL QUERIES (ADMIN SHELL):
+  QUERY SELECT id, owner_id FROM documents LIMIT 5
+  QUERY UPDATE users SET role='admin' WHERE email='ops@example.com'
+  QUERY DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5
+  QUERY SELECT json_extract(data, '\$.status') AS status, COUNT(*) FROM documents GROUP BY status
+  QUERY PRAGMA table_info(documents)
+
+SESSION ROW CAP OVERRIDE:
+  QUERY CAP 500       # set current session row cap to 500
+  QUERY CAP OFF       # disable row cap for current session
+  QUERY CAP DEFAULT   # reset to default cap (200)
+
+  Notes:
+  - Up to 5 SQL statements can be sent in one QUERY command
+  - Destructive/write SQL is allowed in this admin shell
+  - Row cap is per current shell session (default 200)
 
 OTHER:
   HELP          - Show this help message
@@ -568,5 +616,108 @@ Future<void> _handleList(
       details: fullCmd,
     ));
     print('❌ Error: $e');
+  }
+}
+
+Future<void> _handleQuery(String sql, DatabaseManager database, String fullCmd,
+    {int? maxRows, bool disableRowCap = false}) async {
+  final trimmedSql = sql.trim();
+  if (trimmedSql.isEmpty) {
+    print('❌ QUERY requires SQL text');
+    print('   Usage: QUERY SELECT id, owner_id FROM documents LIMIT 10');
+    return;
+  }
+
+  try {
+    final statementResults = await database.executeAdminSql(
+      trimmedSql,
+      maxRows: maxRows,
+      disableRowCap: disableRowCap,
+    );
+
+    print(
+        '✓ SQL executed successfully (${statementResults.length} statement(s))');
+    for (final result in statementResults) {
+      final statementIndex = result['statement_index'];
+      final statementType = result['statement_type'];
+      final rowCount = result['row_count'];
+      final rows = result['rows'] as List;
+
+      print(
+          '  • Statement #$statementIndex [$statementType] -> $rowCount row(s)');
+      for (var i = 0; i < rows.length; i++) {
+        print('    [${i + 1}] ${jsonEncode(rows[i])}');
+      }
+    }
+
+    await logger.logAction(AuditLog(
+      userId: 'admin',
+      action: 'QUERY',
+      resourceType: 'sql',
+      resourceId: 'admin-sql',
+      status: 'success',
+      details:
+          'statements=${statementResults.length} cap=${disableRowCap ? 'off' : (maxRows ?? 200)} sql=$trimmedSql',
+    ));
+  } catch (e) {
+    await logger.logAction(AuditLog(
+      userId: 'admin',
+      action: 'QUERY',
+      resourceType: 'sql',
+      resourceId: 'admin-sql',
+      status: 'failed',
+      errorMessage: e.toString(),
+      details: fullCmd,
+    ));
+    print('❌ Query failed: $e');
+  }
+}
+
+Future<void> _handleQueryCap(
+  String rawValue,
+  DatabaseManager database,
+  String fullCmd, {
+  required void Function(int? newCap, bool disableCap) onSetCap,
+}) async {
+  final value = rawValue.trim().toLowerCase();
+
+  try {
+    if (value == 'off' || value == 'disable' || value == 'none') {
+      onSetCap(null, true);
+      print('✓ QUERY row cap disabled for current session');
+    } else if (value == 'default' || value == 'reset') {
+      onSetCap(200, false);
+      print('✓ QUERY row cap reset to default (200) for current session');
+    } else {
+      final parsed = int.tryParse(value);
+      if (parsed == null || parsed <= 0) {
+        print('❌ QUERY CAP expects a positive integer, OFF, or DEFAULT');
+        print('   Examples: QUERY CAP 500 | QUERY CAP OFF | QUERY CAP DEFAULT');
+        return;
+      }
+
+      onSetCap(parsed, false);
+      print('✓ QUERY row cap set to $parsed for current session');
+    }
+
+    await logger.logAction(AuditLog(
+      userId: 'admin',
+      action: 'QUERY_CAP',
+      resourceType: 'sql',
+      resourceId: 'admin-sql',
+      status: 'success',
+      details: fullCmd,
+    ));
+  } catch (e) {
+    await logger.logAction(AuditLog(
+      userId: 'admin',
+      action: 'QUERY_CAP',
+      resourceType: 'sql',
+      resourceId: 'admin-sql',
+      status: 'failed',
+      errorMessage: e.toString(),
+      details: fullCmd,
+    ));
+    print('❌ Failed to set query cap: $e');
   }
 }
