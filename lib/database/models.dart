@@ -44,10 +44,10 @@ class User {
       email: json['email'] as String,
       passwordHash: json['password_hash'] as String,
       role: json['role'] as String? ?? 'user',
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-          json['created_at'] as int? ?? 0),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(
-          json['updated_at'] as int? ?? 0),
+      createdAt:
+          DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int? ?? 0),
+      updatedAt:
+          DateTime.fromMillisecondsSinceEpoch(json['updated_at'] as int? ?? 0),
     );
   }
 }
@@ -58,7 +58,8 @@ class Collection {
   final String id;
   final String ownerId;
   final String name;
-  final Map<String, dynamic> rules; // { read: [], write: [], public_read: false }
+  final Map<String, dynamic>
+      rules; // { read: [], write: [], public_read: false }
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -99,10 +100,10 @@ class Collection {
             'write': ['owner'],
             'public_read': false,
           },
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-          json['created_at'] as int? ?? 0),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(
-          json['updated_at'] as int? ?? 0),
+      createdAt:
+          DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int? ?? 0),
+      updatedAt:
+          DateTime.fromMillisecondsSinceEpoch(json['updated_at'] as int? ?? 0),
     );
   }
 }
@@ -142,10 +143,10 @@ class Document {
       collectionId: json['collection_id'] as String,
       ownerId: json['owner_id'] as String,
       data: json['data'] as Map<String, dynamic>? ?? {},
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-          json['created_at'] as int? ?? 0),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(
-          json['updated_at'] as int? ?? 0),
+      createdAt:
+          DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int? ?? 0),
+      updatedAt:
+          DateTime.fromMillisecondsSinceEpoch(json['updated_at'] as int? ?? 0),
     );
   }
 }
@@ -188,6 +189,19 @@ class MediaBlob {
       };
 
   factory MediaBlob.fromJson(Map<String, dynamic> json) {
+    // SQLite returns blob data as Uint8List, convert to List<int>
+    final blobDataRaw = json['blob_data'];
+    final List<int> blobDataList;
+    if (blobDataRaw is List<int>) {
+      blobDataList = blobDataRaw;
+    } else if (blobDataRaw is String) {
+      // If it's a string (shouldn't happen but let's be safe)
+      blobDataList = blobDataRaw.codeUnits;
+    } else {
+      // Treat as iterable and convert to list
+      blobDataList = List<int>.from(blobDataRaw as Iterable);
+    }
+
     return MediaBlob(
       id: json['id'] as String,
       documentId: json['document_id'] as String,
@@ -196,9 +210,9 @@ class MediaBlob {
       originalSize: json['original_size'] as int,
       compressedSize: json['compressed_size'] as int,
       compressionAlgo: json['compression_algo'] as String,
-      blobData: json['blob_data'] as List<int>,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-          json['created_at'] as int? ?? 0),
+      blobData: blobDataList,
+      createdAt:
+          DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int? ?? 0),
     );
   }
 }
@@ -247,8 +261,8 @@ class AuditLog {
       resourceId: json['resource_id'] as String,
       status: json['status'] as String,
       errorMessage: json['error_message'] as String?,
-      timestamp: DateTime.fromMillisecondsSinceEpoch(
-          json['timestamp'] as int? ?? 0),
+      timestamp:
+          DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int? ?? 0),
     );
   }
 

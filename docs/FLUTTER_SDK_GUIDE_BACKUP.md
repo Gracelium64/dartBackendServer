@@ -41,7 +41,6 @@ The Shadow App Flutter SDK is a Dart-native client library for integrating with 
 ### Why Use the Flutter SDK?
 
 For **Flutter developers**, this SDK provides:
-
 - Native Dart code with no JavaScript bridge
 - Singleton pattern similar to Firebase
 - Seamless integration with Flutter state management
@@ -49,7 +48,6 @@ For **Flutter developers**, this SDK provides:
 - Similar to Firebase, but with complete backend transparency and learning value
 
 For **Mobile developers**, this SDK provides:
-
 - Native mobile performance
 - Automatic image compression
 - Offline-first capabilities
@@ -119,13 +117,13 @@ import 'package:shadow_app_backend/shadow_app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  
   // Initialize Shadow App SDK
   await ShadowApp.initialize(
     serverUrl: 'http://192.168.1.100:8080',  // Your backend server URL
     enableOfflineMode: true,                 // Optional: enable local caching
   );
-
+  
   runApp(const MyApp());
 }
 
@@ -161,15 +159,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     setState(() => _isLoading = true);
-
+    
     try {
       final user = await ShadowApp.auth.login(
         email: _emailController.text,
         password: _passwordController.text,
       );
-
+      
       print('Logged in as: ${user.email}');
-
+      
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/home');
       }
@@ -265,7 +263,7 @@ class _NotesScreenState extends State<NotesScreen> {
       'content': 'Enter your content here...',
       'createdAt': DateTime.now().toIso8601String(),
     });
-
+    
     setState(() => _notes.add(newNote));
   }
 
@@ -387,11 +385,11 @@ class ShadowAppConfig {
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  
   await ShadowApp.initialize(
     serverUrl: 'http://localhost:8080',
   );
-
+  
   runApp(const MyApp());
 }
 ```
@@ -401,17 +399,17 @@ void main() async {
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  
   await ShadowApp.initialize(
     serverUrl: const String.fromEnvironment('API_URL',
         defaultValue: 'https://api.myapp.com'),
     enableOfflineMode: true,
   );
-
+  
   // Configure advanced options
   ShadowAppConfig.networkTimeout = 60; // 60 seconds for slow networks
   ShadowAppConfig.mediaCompressionQuality = 0.9; // Higher quality
-
+  
   runApp(const MyApp());
 }
 ```
@@ -421,16 +419,16 @@ void main() async {
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  
   await ShadowApp.initialize(
     serverUrl: 'http://192.168.1.100:8080', // Local network IP
     enableOfflineMode: false, // Disable caching for testing
   );
-
+  
   // Enable debug logging
   ShadowAppConfig.enableDebugLogging = true;
   ShadowAppConfig.networkTimeout = 5; // Fast failure for development
-
+  
   runApp(const MyApp());
 }
 ```
@@ -467,7 +465,7 @@ void main() async {
 
 Create a new user account:
 
-````dart
+```dart
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
 
@@ -580,7 +578,7 @@ Future<void> logoutUser() async {
   await ShadowApp.auth.logout();
   print('Logged out');
 }
-````
+```
 
 #### Check Authentication Status
 
@@ -614,7 +612,6 @@ print('Data: ${newNote.data}');
 ```
 
 **Output:**
-
 ```
 Document created with ID: doc-a1b2c3d4e5f6
 Data: {
@@ -714,7 +711,7 @@ Future<void> uploadProfileImage() async {
         destinationDocId: 'user-xyz123',  // Your user ID
         mediaType: 'image/jpeg',
       );
-
+      
       print('Uploaded: ${media.id}');
       print('Original size: ${media.originalSize} bytes');
       print('Compressed size: ${media.compressedSize} bytes');
@@ -727,7 +724,6 @@ Future<void> uploadProfileImage() async {
 ```
 
 The SDK automatically:
-
 - Compresses the image (JPEG to optimized JPEG, PNG to compressed PNG)
 - Uploads to server
 - Stores in the specified document
@@ -739,12 +735,12 @@ The SDK automatically:
 Future<void> downloadProfileImage(String mediaId) async {
   try {
     final bytes = await ShadowApp.media.download(mediaId);
-
+    
     // Save to local file
     final appDir = await getApplicationDocumentsDirectory();
     final file = File('${appDir.path}/profile_image.jpg');
     await file.writeAsBytes(bytes);
-
+    
     print('Downloaded and saved: ${file.path}');
   } catch (e) {
     print('Download failed: $e');
@@ -799,11 +795,9 @@ Behind the scenes:
    - Token is a signed, encrypted blob that proves your identity
 
 3. **JWT Token**:
-
    ```
    eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFiYzEyMyIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsImV4cCI6MTYwMjM5NjU0N30.SflKxwRJSmYq...
    ```
-
    - **Header**: Algorithm (RS256)
    - **Payload**: User ID, email, expiration time
    - **Signature**: Cryptographic proof server created this token
@@ -814,7 +808,6 @@ Behind the scenes:
    ```
    Authorization: Bearer eyJhbGc...
    ```
-
    - Server validates signature and expiration
    - If valid, processes request as that user
    - If invalid/expired, returns 401 Unauthorized
@@ -822,7 +815,6 @@ Behind the scenes:
 ### How CRUD Works
 
 1. **Create**: POST to `/api/collections/{collectionId}/documents`
-
    ```
    Request body: { "title": "My Note", "content": "..." }
    Response: { "id": "doc-xyz", "data": { ... } }
@@ -834,7 +826,6 @@ Behind the scenes:
    - Returns 200 OK with document data if allowed
 
 3. **Update**: PUT `/api/collections/{collectionId}/documents/{docId}`
-
    ```
    Request body: { "title": "Updated" }
    Response: { "id": "doc-xyz", "data": { ... } }
@@ -877,8 +868,8 @@ class NotesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Notes App',
-      home: ShadowApp.auth.isLoggedIn
-        ? const NotesScreen()
+      home: ShadowApp.auth.isLoggedIn 
+        ? const NotesScreen() 
         : const LoginScreen(),
     );
   }
@@ -1006,781 +997,58 @@ class _NotesScreenState extends State<NotesScreen> {
               return ListTile(
                 title: Text(note.data['title'] ?? 'Untitled'),
                 onTap: () {
-```
-
----
-
-## API Reference
-
-### AuthService
-
-Complete authentication API:
-
-```dart
-// Signup
-Future<AuthUser> signup({
-  required String email,
-  required String password,
-}) async
-
-// Login
-Future<AuthUser> login({
-  required String email,
-  required String password,
-}) async
-
-// Logout
-Future<void> logout() async
-
-// Check login status
-bool get isLoggedIn
-
-// Get current user
-AuthUser? get currentUser
-
-// Get access token
-Future<String?> getAccessToken() async
-
-// Manually refresh token
-Future<String> refreshTokenManually() async
-```
-
-### CrudService
-
-Complete CRUD API for a collection:
-
-```dart
-// Create document
-Future<ShadowDocument> create(Map<String, dynamic> data) async
-
-// Read single document
-Future<ShadowDocument> read(String docId) async
-
-// Update document
-Future<ShadowDocument> update(
-  String docId,
-  Map<String, dynamic> data, {
-  bool merge = true,
-}) async
-
-// Delete document
-Future<void> delete(String docId) async
-
-// List documents with pagination
-Future<List<ShadowDocument>> list({
-  int limit = 50,
-  int offset = 0,
-  Map<String, dynamic>? where,
-}) async
-```
-
-### MediaService
-
-Complete media API:
-
-```dart
-// Upload file
-Future<MediaUploadResult> upload({
-  required String filePath,
-  required String mediaType,
-  Function(double progress)? onProgress,
-}) async
-
-// Download file
-Future<Uint8List> download(String mediaId) async
-
-// Get metadata
-Future<MediaMetadata> getMetadata(String mediaId) async
-```
-
----
-
-## Dart Types
-
-### Core Types
-
-```dart
-// User
-class AuthUser {
-  final String id;
-  final String email;
-  final String role; // 'user' or 'admin'
-  final DateTime createdAt;
-}
-
-// Document
-class ShadowDocument {
-  final String id;
-  final String collectionId;
-  final String ownerId;
-  final Map<String, dynamic> data; // Your custom data
-  final DateTime createdAt;
-  final DateTime updatedAt;
-}
-
-// Media Upload Result
-class MediaUploadResult {
-  final String id;
-  final int originalSize;
-  final int compressedSize;
-  final String compressionAlgo;
-}
-
-// Media Metadata
-class MediaMetadata {
-  final String id;
-  final String uploaderId;
-  final String filename;
-  final String mimeType;
-  final int size;
-  final DateTime uploadedAt;
-}
-```
-
-### Exception Types
-
-```dart
-// Base exception
-class ShadowAppException implements Exception {
-  final String message;
-  const ShadowAppException(this.message);
-}
-
-// Authentication failures
-class AuthException extends ShadowAppException {
-  const AuthException(String message) : super(message);
-}
-
-// Network/connectivity issues
-class NetworkException extends ShadowAppException {
-  const NetworkException(String message) : super(message);
-}
-
-// Document not found
-class NotFoundException extends ShadowAppException {
-  const NotFoundException(String message) : super(message);
-}
-
-// Permission denied
-class PermissionException extends ShadowAppException {
-  const PermissionException(String message) : super(message);
-}
-
-// Validation errors
-class ValidationException extends ShadowAppException {
-  const ValidationException(String message) : super(message);
-}
-```
-
----
-
-## Error Handling
-
-### Global Error Handling
-
-```dart
-class ErrorHandler {
-  static void handleError(dynamic error, {String? context}) {
-    if (error is AuthException) {
-      print('🔒 Auth Error: ${error.message}');
-      // Navigate to login
-    } else if (error is NetworkException) {
-      print('🌐 Network Error: ${error.message}');
-      // Show retry dialog
-    } else if (error is NotFoundException) {
-      print('❌ Not Found: ${error.message}');
-      // Show 404 message
-    } else if (error is PermissionException) {
-      print('🚫 Permission Denied: ${error.message}');
-      // Show access denied message
-    } else if (error is ValidationException) {
-      print('⚠️  Validation Error: ${error.message}');
-      // Show validation feedback
-    } else {
-      print('❗ Unknown Error in $context: $error');
-      // Log to crash reporting service
-    }
-  }
-}
-```
-
-### Widget-Level Error Handling
-
-```dart
-class ErrorBoundaryWidget extends StatelessWidget {
-  final Widget child;
-
-  const ErrorBoundaryWidget({Key? key, required this.child}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return child;
-  }
-
-  static Widget buildErrorWidget(BuildContext context, dynamic error) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 48, color: Colors.red),
-          const SizedBox(height: 16),
-          Text(
-            'An error occurred',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            error.toString(),
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-```
-
-### Network Error Retry Pattern
-
-```dart
-Future<T> retryOnNetworkError<T>({
-  required Future<T> Function() operation,
-  int maxRetries = 3,
-  Duration delayBetweenRetries = const Duration(seconds: 2),
-}) async {
-  int attempts = 0;
-
-  while (attempts < maxRetries) {
-    try {
-      return await operation();
-    } on NetworkException catch (e) {
-      attempts++;
-      if (attempts >= maxRetries) {
-        rethrow;
-      }
-      print('Network error, retrying ($attempts/$maxRetries)...');
-      await Future.delayed(delayBetweenRetries);
-    }
-  }
-
-  throw NetworkException('Max retries exceeded');
-}
-
-// Usage:
-final notes = await retryOnNetworkError(
-  operation: () => ShadowApp.collection('notes').list(),
-);
-```
-
----
-
-## State Management
-
-### Using Provider
-
-```dart
-import 'package:provider/provider.dart';
-
-class NotesProvider with ChangeNotifier {
-  List<ShadowDocument> _notes = [];
-  bool _isLoading = false;
-  String? _error;
-
-  List<ShadowDocument> get notes => _notes;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-
-  Future<void> fetchNotes() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      _notes = await ShadowApp.collection('notes').list();
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> addNote(Map<String, dynamic> data) async {
-    try {
-      final newNote = await ShadowApp.collection('notes').create(data);
-      _notes.add(newNote);
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
-
-  Future<void> deleteNote(String noteId) async {
-    try {
-      await ShadowApp.collection('notes').delete(noteId);
-      _notes.removeWhere((note) => note.id == noteId);
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
-}
-
-// Setup in main.dart:
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await ShadowApp.initialize(serverUrl: 'http://localhost:8080');
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => NotesProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
-}
-
-// Use in  Widget:
-class NotesScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<NotesProvider>(
-      builder: (context, notesProvider, child) {
-        if (notesProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        return ListView.builder(
-          itemCount: notesProvider.notes.length,
-          itemBuilder: (context, index) {
-            final note = notesProvider.notes[index];
-            return ListTile(
-              title: Text(note.data['title'] ?? 'Untitled'),
-              subtitle: Text(note.data['content'] ?? ''),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-```
-
-### Using Riverpod
-
-```dart
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-// Provider for notes
-final notesProvider = FutureProvider<List<ShadowDocument>>((ref) async {
-  return await ShadowApp.collection('notes').list();
-});
-
-// Provider for auth state
-final authStateProvider = StateProvider<AuthUser?>((ref) {
-  return ShadowApp.auth.currentUser;
-});
-
-// Use in Widget:
-class NotesScreen extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final notesAsync = ref.watch(notesProvider);
-
-    return notesAsync.when(
-      data: (notes) => ListView.builder(
-        itemCount: notes.length,
-        itemBuilder: (context, index) {
-          final note = notes[index];
-          return ListTile(
-            title: Text(note.data['title'] ?? 'Untitled'),
-          );
-        },
-      ),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Error: $error')),
-    );
-  }
-}
-```
-
-### Using BLoC
-
-```dart
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-// Events
-abstract class NotesEvent {}
-class LoadNotes extends NotesEvent {}
-class AddNote extends NotesEvent {
-  final Map<String, dynamic> data;
-  AddNote(this.data);
-}
-class DeleteNote extends NotesEvent {
-  final String noteId;
-  DeleteNote(this.noteId);
-}
-
-// States
-abstract class NotesState {}
-class NotesInitial extends NotesState {}
-class NotesLoading extends NotesState {}
-class NotesLoaded extends NotesState {
-  final List<ShadowDocument> notes;
-  NotesLoaded(this.notes);
-}
-class NotesError extends NotesState {
-  final String message;
-  NotesError(this.message);
-}
-
-// BLoC
-class NotesBloc extends Bloc<NotesEvent, NotesState> {
-  NotesBloc() : super(NotesInitial()) {
-    on<LoadNotes>(_onLoadNotes);
-    on<AddNote>(_onAddNote);
-    on<DeleteNote>(_onDeleteNote);
-  }
-
-  Future<void> _onLoadNotes(LoadNotes event, Emitter<NotesState> emit) async {
-    emit(NotesLoading());
-    try {
-      final notes = await ShadowApp.collection('notes').list();
-      emit(NotesLoaded(notes));
-    } catch (e) {
-      emit(NotesError(e.toString()));
-    }
-  }
-
-  Future<void> _onAddNote(AddNote event, Emitter<NotesState> emit) async {
-    try {
-      await ShadowApp.collection('notes').create(event.data);
-      add(LoadNotes()); // Reload
-    } catch (e) {
-      emit(NotesError(e.toString()));
-    }
-  }
-
-  Future<void> _onDeleteNote(DeleteNote event, Emitter<NotesState> emit) async {
-    try {
-      await ShadowApp.collection('notes').delete(event.noteId);
-      add(LoadNotes()); // Reload
-    } catch (e) {
-      emit(NotesError(e.toString()));
-    }
-  }
-}
-
-// Use in Widget:
-class NotesScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<NotesBloc, NotesState>(
-      builder: (context, state) {
-        if (state is NotesLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state is NotesLoaded) {
-          return ListView.builder(
-            itemCount: state.notes.length,
-            itemBuilder: (context, index) {
-              final note = state.notes[index];
-              return ListTile(
-                title: Text(note.data['title'] ?? 'Untitled'),
+                  // Open note editor
+                },
               );
             },
           );
-        } else if (state is NotesError) {
-          return Center(child: Text('Error: ${state.message}'));
-        }
-        return const SizedBox.shrink();
-      },
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createNote,
+        child: const Icon(Icons.add),
+      ),
     );
   }
 }
-```
 
----
-
-## Best Practices
-
-### 1. Initialize Once
-
-✅ **Do:**
-
-```dart
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await ShadowApp.initialize(serverUrl: '...');
-  runApp(const MyApp());
-}
-```
-
-❌ **Don't:**
-
-```dart
-// Multiple initializations cause conflicts
-await ShadowApp.initialize(...);
-await ShadowApp.initialize(...); // ERROR!
-```
-
-### 2. Handle Loading States
-
-✅ **Do:**
-
-```dart
-Future<void> loadData() async {
-  setState(() => _isLoading = true);
-  try {
-    final data = await ShadowApp.collection('notes').list();
-    setState(() {
-      _data = data;
-      _isLoading = false;
-    });
-  } catch (e) {
-    setState(() {
-      _error = e.toString();
-      _isLoading = false;
-    });
-  }
-}
-```
-
-❌ **Don't:**
-
-```dart
-// Assuming data is always available
-final data = await ShadowApp.collection('notes').list();
-// No loading state or error handling
-```
-
-### 3. Use Mounted Check
-
-✅ **Do:**
-
-```dart
-Future<void> fetchData() async {
-  final data = await ShadowApp.collection('notes').list();
-  if (mounted) {
-    setState(() => _notes = data);
-  }
-}
-```
-
-❌ **Don't:**
-
-```dart
-// Calling setState after widget disposal causes errors
-Future<void> fetchData() async {
-  final data = await ShadowApp.collection('notes').list();
-  setState(() => _notes = data); // May error if widget unmounted
-}
-```
-
-### 4. Dispose Controllers
-
-✅ **Do:**
-
-```dart
-class MyScreen extends StatefulWidget {
+class _CreateNoteDialog extends StatefulWidget {
   @override
-  State<MyScreen> createState() => _MyScreenState();
+  State<_CreateNoteDialog> createState() => _CreateNoteDialogState();
 }
 
-class _MyScreenState extends State<MyScreen> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _CreateNoteDialogState extends State<_CreateNoteDialog> {
+  final controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
-    return TextField(controller: _controller);
-  }
-}
-```
-
-### 5. Validate User Input
-
-✅ **Do:**
-
-```dart
-Future<void> createNote() async {
-  if (_titleController.text.trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Title cannot be empty')),
+    return AlertDialog(
+      title: const Text('New Note'),
+      content: TextField(
+        controller: controller,
+        decoration: const InputDecoration(hintText: 'Note title'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, controller.text),
+          child: const Text('Create'),
+        ),
+      ],
     );
-    return;
   }
-
-  await ShadowApp.collection('notes').create({
-    'title': _titleController.text,
-  });
 }
 ```
 
-### 6. Use Const Constructors
+## Now What?
 
-✅ **Do:**
-
-```dart
-const Text('Hello');
-const SizedBox(height: 16);
-const CircularProgressIndicator();
-```
-
-Improves performance by reusing widget instances.
-
-### 7. Handle Offline Scenarios
-
-✅ **Do:**
-
-```dart
-try {
-  final notes = await ShadowApp.collection('notes').list();
-  setState(() => _notes = notes);
-} on NetworkException catch (e) {
-  // Show offline message
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('No network connection'),
-      action: SnackBarAction(label: 'Retry', onPressed: loadNotes),
-    ),
-  );
-}
-```
+1. **Read [ARCHITECTURE.md](ARCHITECTURE.md)** to understand how the backend works internally
+2. **Explore [OPERATOR_MANUAL.md](OPERATOR_MANUAL.md)** to learn how to run and monitor the server
+3. **Check [MAINTENANCE_SCALING_GUIDE.md](MAINTENANCE_SCALING_GUIDE.md)** for deployment strategies
 
 ---
 
-## Comparison with React SDK
-
-Both SDKs provide **identical features** but with different architectural approaches:
-
-### File Count Comparison
-
-| SDK             | Files   | Reason                                                        |
-| --------------- | ------- | ------------------------------------------------------------- |
-| **Flutter SDK** | 5 files | Dart types inline, service classes, simpler config            |
-| **React SDK**   | 8 files | TypeScript types, React hooks, Context Provider, build config |
-
-### Architecture Comparison
-
-**Flutter SDK Philosophy:**
-
-- Object-oriented service classes
-- Singleton pattern with static methods (`ShadowApp.auth.login()`)
-- Types live with implementation
-- Dart's built-in type system
-
-**React SDK Philosophy:**
-
-- Separation of concerns (types, client, hooks, context)
-- Functional programming with hooks
-- Context API for dependency injection
-- TypeScript for type safety
-
-### Feature Parity
-
-| Feature               | Flutter SDK          | React SDK     |
-| --------------------- | -------------------- | ------------- |
-| Authentication        | ✅                   | ✅            |
-| CRUD Operations       | ✅                   | ✅            |
-| Media Upload/Download | ✅                   | ✅            |
-| Token Refresh         | ✅ Automatic         | ✅ Automatic  |
-| Type Safety           | ✅ Dart              | ✅ TypeScript |
-| State Management      | ✅ Built-in          | ✅ Hooks      |
-| Offline Support       | ✅ SharedPreferences | ❌            |
-| Progress Tracking     | ✅                   | ✅            |
-
-### Code Comparison
-
-**Flutter SDK:**
-
-```dart
-// Setup
-await ShadowApp.initialize(serverUrl: '...');
-
-// Usage
-final notes = await ShadowApp.collection('notes').list();
-final newNote = await ShadowApp.collection('notes').create({
-  'title': 'My Note',
-});
-```
-
-**React SDK:**
-
-```tsx
-// Setup
-<ShadowAppProvider config={{ baseURL: "..." }}>
-  <App />
-</ShadowAppProvider>;
-
-// Usage
-const { documents, createDocument } = useDocuments(client, "notes");
-await createDocument({ data: { title: "My Note" } });
-```
-
-### When to Use Each
-
-**Use Flutter SDK when:**
-
-- Building mobile apps (iOS/Android)
-- Building desktop apps (Windows/Mac/Linux)
-- Need offline-first capabilities
-- Dart/Flutter is your primary framework
-- Native performance is critical
-
-**Use React SDK when:**
-
-- Building web applications
-- Working with React/Next.js/Remix
-- Need browser-based file handling
-- TypeScript is your primary language
-- Web-only deployment
-
----
-
-## Additional Resources
-
-### Documentation
-
-- [React SDK Guide](./REACT_SDK_GUIDE.md) - React SDK documentation
-- [CLI Audit Report](./CLI_AUDIT_REPORT.md) - Backend CLI details
-- [Architecture](./ARCHITECTURE.md) - Backend architecture overview
-- [Operator Manual](./OPERATOR_MANUAL.md) - Server operation guide
-- [Maintenance & Scaling](./MAINTENANCE_SCALING_GUIDE.md) - Deployment strategies
-
-### Internal Documentation
-
-For understanding how the SDK works internally:
-
-- Read the source code in `flutter_sdk/lib/`
-- All methods have detailed comments explaining backend communication
-- Check `auth_service.dart` for JWT token management
-- Review `crud_service.dart` for HTTP request patterns
-- Inspect `media_service.dart` for compression algorithms
-
-### Examples
-
-See the complete example app in this guide (sections above) for a fully functional notes application with authentication, CRUD operations, and error handling.
-
-### Support
-
-For issues, questions, or contributions:
-
-- **Repository:** miranda6424/dartBackendServer
-- **Branch:** devGrace (development)
-- **Backend Version:** 0.1.0
-- **SDK Version:** 0.1.0
-
----
-
-**Guide Version:** 1.0  
-**Last Updated:** March 8, 2026  
-**Maintainer:** Shadow App Team
+**Questions or issues?** Review the troubleshooting section in the Operator Manual or inspect server logs at `data/logs/`.

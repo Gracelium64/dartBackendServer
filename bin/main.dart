@@ -7,82 +7,20 @@
 // parts of the application.
 
 import 'package:args/args.dart';
-import 'package:ansicolor/ansicolor.dart';
+import 'package:shadow_app_backend/server.dart' as server;
+import 'package:shadow_app_backend/database/db_manager.dart';
+import 'package:shadow_app_backend/logging/logger.dart';
+import 'package:shadow_app_backend/config.dart';
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
+import 'package:path/path.dart' as path;
 
-/// ASCII art and UI utilities for styled terminal output
-class TerminalUI {
-  static final _pen = AnsiPen()..color(4); // Blue
-  static final _penGreen = AnsiPen()..green();
-  static final _penRed = AnsiPen()..red();
-  static final _penYellow = AnsiPen()..yellow();
-
-  static void printBanner() {
-    print('''
-╔════════════════════════════════════════════════════════════════════════════════╗
-║                                                                                ║
-║                    🚀 Shadow App Backend Server v0.1.0 🚀                     ║
-║                                                                                ║
-║                    A Dart Learning Backend for Flutter Developers              ║
-║                                                                                ║
-╚════════════════════════════════════════════════════════════════════════════════╝
-    ''');
-  }
-
-  static void printHeader(String text) {
-    print('\n${_pen(text)}');
-    print(_pen('═' * text.length));
-  }
-
-  static void printSuccess(String text) {
-    print('${_penGreen('✓')} $text');
-  }
-
-  static void printError(String text) {
-    print('${_penRed('✗')} $text');
-  }
-
-  static void printWarning(String text) {
-    print('${_penYellow('⚠')} $text');
-  }
-
-  static void printTable(List<String> headers, List<List<String>> rows) {
-    // Simple ASCII table printer
-    // Calculate column widths
-    final widths = <int>[];
-    for (int i = 0; i < headers.length; i++) {
-      widths.add(headers[i].length);
-      for (final row in rows) {
-        if (i < row.length) {
-          widths[i] = widths[i] > row[i].length ? widths[i] : row[i].length;
-        }
-      }
-    }
-
-    // Print header
-    final headerLine = headers
-        .asMap()
-        .entries
-        .map((e) => e.value.padRight(widths[e.key]))
-        .join(' │ ');
-    print('┌─${headerLine.replaceAll(' │ ', '─┬─')}─┐');
-    print('│ $headerLine │');
-    print('├─${headerLine.replaceAll(' │ ', '─┼─')}─┤');
-
-    // Print rows
-    for (final row in rows) {
-      final rowLine = row
-          .asMap()
-          .entries
-          .map((e) => (e.value).padRight(widths[e.key]))
-          .join(' │ ');
-      print('│ $rowLine │');
-    }
-
-    print('└─${headerLine.replaceAll(' │ ', '─┴─')}─┘');
-  }
-}
+// Import helper modules
+import 'helpers/terminal_ui.dart';
+import 'helpers/user_management.dart' as user_mgmt;
+import 'helpers/document_operations.dart' as doc_ops;
+import 'helpers/report_generator.dart' as reports;
 
 /// Main entry point
 Future<void> main(List<String> args) async {
@@ -139,11 +77,9 @@ ArgParser _serverCommand() {
     ..addOption('port', defaultsTo: '8080', help: 'Server port')
     ..addOption('host', defaultsTo: '0.0.0.0', help: 'Server host')
     ..addOption('db-path',
-        defaultsTo: 'data/shadow_app.db',
-        help: 'Path to SQLite database file')
+        defaultsTo: 'data/shadow_app.db', help: 'Path to SQLite database file')
     ..addOption('log-level',
-        defaultsTo: 'INFO',
-        help: 'Logging level (DEBUG, INFO, WARN, ERROR)')
+        defaultsTo: 'INFO', help: 'Logging level (DEBUG, INFO, WARN, ERROR)')
     ..addFlag('stop', help: 'Stop running server gracefully');
 }
 
@@ -151,8 +87,7 @@ ArgParser _serverCommand() {
 ArgParser _logTailCommand() {
   return ArgParser()
     ..addOption('lines',
-        defaultsTo: '50',
-        help: 'Number of recent lines to display')
+        defaultsTo: '50', help: 'Number of recent lines to display')
     ..addFlag('follow', help: 'Follow new log entries (like tail -f)');
 }
 
@@ -162,8 +97,7 @@ ArgParser _adminCommand() {
     ..addOption('admin-key',
         help: 'Admin key for authentication (will prompt if not provided)')
     ..addOption('server-url',
-        defaultsTo: 'http://localhost:8080',
-        help: 'Backend server URL');
+        defaultsTo: 'http://localhost:8080', help: 'Backend server URL');
 }
 
 void _printUsage(ArgParser parser) {
@@ -210,17 +144,13 @@ Future<void> _runServer(ArgResults results) async {
   print('  Database: $dbPath');
   print('  Log Level: $logLevel');
 
-  TerminalUI.printSuccess('Database initialized at $dbPath');
-  TerminalUI.printSuccess('Listening on http://$host:$port');
-
-  // TODO: Implement actual server initialization
-  // For now, show placeholder
-  print('\n[PLACEHOLDER] Server would start here');
-  print('[PLACEHOLDER] HTTP endpoints would be registered');
-  print('[PLACEHOLDER] Press Ctrl+C to stop server');
-
-  // Keep server running
-  await Future.delayed(Duration(days: 365));
+  try {
+    await server.runServer(host, port,
+        dbPathOverride: dbPath, logLevelOverride: logLevel);
+  } catch (e) {
+    TerminalUI.printError('Failed to start server: $e');
+    exit(1);
+  }
 }
 
 /// Run log-tail mode
@@ -228,69 +158,90 @@ Future<void> _runLogTail(ArgResults results) async {
   TerminalUI.printHeader('Live Action Log - Shadow App Backend');
 
   final lines = int.parse(results['lines'] as String);
-  final follow = results['flag']('follow') as bool? ?? false;
+  final follow = results['follow'] as bool;
 
-  print('''\nDisplaying recent $lines log entries${follow ? ' (following new entries...)' : ''}
+  // Initialize config and logger
+  try {
+    globalConfig = ServerConfig();
+    await globalConfig.load();
+    await logger.initialize();
+  } catch (e) {
+    TerminalUI.printError('Failed to initialize logging system: $e');
+    exit(1);
+  }
 
-''');
+  print(
+      '''\nDisplaying recent $lines log entries${follow ? ' (following new entries...)' : ''}\n''');
 
-  // Print example headers
-  final headers = [
-    'Timestamp',
-    'User',
-    'Action',
-    'Resource',
-    'Status',
-  ];
+  // Get most recent log file
+  final logFiles = await logger.getLogFiles();
+  if (logFiles.isEmpty) {
+    TerminalUI.printWarning('No log files found');
+    return;
+  }
 
-  // Print example data (placeholder)
-  final exampleRows = [
-    [
-      '2026-02-14T10:30:05Z',
-      'user@example.com',
-      'LOGIN',
-      'user:user-123',
-      '✓'
-    ],
-    [
-      '2026-02-14T10:30:15Z',
-      'user@example.com',
-      'CREATE',
-      'doc:doc-456',
-      '✓'
-    ],
-    [
-      '2026-02-14T10:30:22Z',
-      'admin@example.com',
-      'READ',
-      'doc:doc-456',
-      '✓'
-    ],
-  ];
+  final latestLogFile = logFiles.first;
+  print('Reading: ${path.basename(latestLogFile.path)}\n');
 
-  TerminalUI.printTable(headers, exampleRows);
+  // Read and display last N lines
+  final allLines = await latestLogFile.readAsLines();
+  final startIndex = (allLines.length - lines).clamp(0, allLines.length);
+  final recentLines = allLines.sublist(startIndex);
 
-  print('\n[PLACEHOLDER] Live log tail would display here');
-  print('[PLACEHOLDER] Press Ctrl+C to stop');
+  for (final line in recentLines) {
+    print(line);
+  }
 
-  // Keep running
-  await Future.delayed(Duration(days: 365));
+  // Follow mode - watch for new lines
+  if (follow) {
+    print('\n--- Following new entries (Ctrl+C to stop) ---\n');
+
+    var lastLineCount = allLines.length;
+
+    // Poll the file every second for new lines
+    while (true) {
+      await Future.delayed(Duration(seconds: 1));
+
+      try {
+        final currentLines = await latestLogFile.readAsLines();
+        if (currentLines.length > lastLineCount) {
+          final newLines = currentLines.sublist(lastLineCount);
+          for (final line in newLines) {
+            print(line);
+          }
+          lastLineCount = currentLines.length;
+        }
+      } catch (e) {
+        // File might be rotated, try to get new file
+        final updatedLogFiles = await logger.getLogFiles();
+        if (updatedLogFiles.isNotEmpty &&
+            updatedLogFiles.first.path != latestLogFile.path) {
+          print(
+              '\n--- Log file rotated to ${path.basename(updatedLogFiles.first.path)} ---\n');
+          break;
+        }
+      }
+    }
+  }
 }
 
 /// Run admin console mode
 Future<void> _runAdmin(ArgResults results) async {
   TerminalUI.printHeader('Admin Console - Shadow App Backend');
 
-  var adminKey = results['admin-key'] as String?;
-  final serverUrl = results['server-url'] as String;
-
-  if (adminKey == null || adminKey.isEmpty) {
-    print('\nEnter admin key (shown on server startup): ');
-    adminKey = stdin.readLineSync() ?? '';
+  // Initialize config, database, and logger
+  try {
+    print('\nInitializing database connection...');
+    globalConfig = ServerConfig();
+    await globalConfig.load();
+    database = DatabaseManager();
+    await database.initialize(globalConfig.dbPath);
+    await logger.initialize();
+    TerminalUI.printSuccess('Database connected: ${globalConfig.dbPath}');
+  } catch (e) {
+    TerminalUI.printError('Failed to initialize: $e');
+    exit(1);
   }
-
-  print('\nConnecting to $serverUrl...');
-  TerminalUI.printSuccess('Connected to server');
 
   // Admin menu loop
   bool running = true;
@@ -302,7 +253,7 @@ Future<void> _runAdmin(ArgResults results) async {
 
 1. Manage Users
 2. View Audit Log
-3. Execute Raw CRUD
+3. Execute CRUD Operations
 4. View System Stats
 5. Configure Collection Rules
 6. Generate Reports
@@ -313,96 +264,218 @@ Future<void> _runAdmin(ArgResults results) async {
     print('Enter your choice (1-7): ');
     final choice = stdin.readLineSync();
 
-    switch (choice) {
-      case '1':
-        _adminMenuUsers();
-        break;
-      case '2':
-        _adminMenuAuditLog();
-        break;
-      case '3':
-        _adminMenuCrud();
-        break;
-      case '4':
-        _adminMenuStats();
-        break;
-      case '5':
-        _adminMenuRules();
-        break;
-      case '6':
-        _adminMenuReports();
-        break;
-      case '7':
-        running = false;
-        break;
-      default:
-        TerminalUI.printError('Invalid choice');
+    try {
+      switch (choice) {
+        case '1':
+          await _adminMenuUsers();
+          break;
+        case '2':
+          await _adminMenuAuditLog();
+          break;
+        case '3':
+          await _adminMenuCrud();
+          break;
+        case '4':
+          await _adminMenuStats();
+          break;
+        case '5':
+          await _adminMenuRules();
+          break;
+        case '6':
+          await _adminMenuReports();
+          break;
+        case '7':
+          running = false;
+          break;
+        default:
+          TerminalUI.printError('Invalid choice');
+      }
+    } catch (e) {
+      TerminalUI.printError('Operation failed: $e');
     }
   }
 
   TerminalUI.printSuccess('Admin console closed');
 }
 
-void _adminMenuUsers() {
+Future<void> _adminMenuUsers() async {
   print('\n[Admin] Manage Users');
   print('1. List Users');
   print('2. Add User');
   print('3. Delete User');
   print('4. Change Role');
+  print('5. Back');
 
-  print('Enter choice (1-4): ');
+  print('\nEnter choice (1-5): ');
   final choice = stdin.readLineSync();
-  print('[PLACEHOLDER] Admin user management would go here');
+
+  switch (choice) {
+    case '1':
+      await user_mgmt.listUsers(database);
+      break;
+    case '2':
+      await user_mgmt.addUser(database);
+      break;
+    case '3':
+      await user_mgmt.deleteUser(database);
+      break;
+    case '4':
+      await user_mgmt.changeUserRole(database);
+      break;
+    case '5':
+      break;
+    default:
+      TerminalUI.printError('Invalid choice');
+  }
 }
 
-void _adminMenuAuditLog() {
+Future<void> _adminMenuAuditLog() async {
   print('\n[Admin] View Audit Log');
-  print('[PLACEHOLDER] Audit log viewer would go here');
+  print('\nNumber of entries to display [100]: ');
+  final limitStr = stdin.readLineSync()?.trim() ?? '100';
+  final limit = int.tryParse(limitStr) ?? 100;
+
+  final logs = await database.getAuditLog(limit: limit);
+
+  if (logs.isEmpty) {
+    TerminalUI.printWarning('No audit log entries found');
+  } else {
+    print('\n--- Audit Log (${logs.length} entries) ---\n');
+    final headers = ['Timestamp', 'User', 'Action', 'Resource', 'Status'];
+    final rows = logs
+        .map((log) => [
+              log.timestamp.toIso8601String().substring(0, 19),
+              log.userId.substring(0, 8),
+              log.action,
+              '${log.resourceType}:${log.resourceId.substring(0, 8)}',
+              log.status == 'success'
+                  ? '✓'
+                  : '✗${log.errorMessage != null ? " (${log.errorMessage})" : ""}',
+            ])
+        .toList();
+    TerminalUI.printTable(headers, rows);
+  }
 }
 
-void _adminMenuCrud() {
-  print('\n[Admin] Execute Raw CRUD');
-  print('1. Create Document');
-  print('2. Read Document');
-  print('3. Update Document');
-  print('4. Delete Document');
-  print('5. List Collection');
+Future<void> _adminMenuCrud() async {
+  print('\n[Admin] CRUD Operations');
+  print('1. List Collections');
+  print('2. Create Collection');
+  print('3. Create Document');
+  print('4. Read Document');
+  print('5. Update Document');
+  print('6. Delete Document');
+  print('7. List Documents in Collection');
+  print('8. Back');
 
-  print('Enter choice (1-5): ');
+  print('\nEnter choice (1-8): ');
   final choice = stdin.readLineSync();
-  print('[PLACEHOLDER] CRUD executor would go here');
+
+  switch (choice) {
+    case '1':
+      await doc_ops.listCollections(database);
+      break;
+    case '2':
+      await doc_ops.createCollection(database);
+      break;
+    case '3':
+      await doc_ops.createDocument(database);
+      break;
+    case '4':
+      await doc_ops.readDocument(database);
+      break;
+    case '5':
+      await doc_ops.updateDocument(database);
+      break;
+    case '6':
+      await doc_ops.deleteDocument(database);
+      break;
+    case '7':
+      await doc_ops.listDocuments(database);
+      break;
+    case '8':
+      break;
+    default:
+      TerminalUI.printError('Invalid choice');
+  }
 }
 
-void _adminMenuStats() {
-  print('\n[Admin] System Statistics');
-
-  final headers = ['Metric', 'Value'];
-  final rows = [
-    ['Total Users', '42'],
-    ['Total Collections', '15'],
-    ['Total Documents', '8,432'],
-    ['Media Storage', '2.3 GB'],
-    ['Database Size', '2.5 GB'],
-    ['Log Files Size', '1.2 GB'],
-    ['Server Uptime', '72 days 15 hours'],
-    ['Database Status', '✓ Healthy'],
-  ];
-
-  TerminalUI.printTable(headers, rows);
+Future<void> _adminMenuStats() async {
+  await reports.generateStorageReport(database);
 }
 
-void _adminMenuRules() {
+Future<void> _adminMenuRules() async {
   print('\n[Admin] Configure Collection Rules');
-  print('[PLACEHOLDER] Permission rule editor would go here');
+
+  // List collections
+  final collections = await database.getAllCollections();
+  if (collections.isEmpty) {
+    TerminalUI.printWarning('No collections found. Create a collection first.');
+    return;
+  }
+
+  print('\n--- Collections ---');
+  for (var i = 0; i < collections.length; i++) {
+    print(
+        '\${i + 1}. \${collections[i].name} (\${collections[i].id.substring(0, 8)})');
+  }
+
+  print('\nSelect collection number: ');
+  final input = stdin.readLineSync()?.trim() ?? '';
+  final index = int.tryParse(input);
+
+  if (index == null || index < 1 || index > collections.length) {
+    TerminalUI.printError('Invalid selection');
+    return;
+  }
+
+  final collection = collections[index - 1];
+  print(
+      '\nCurrent rules for "\${collection.name}":\n\${jsonEncode(collection.rules)}');
+  print('\nEnter new rules as JSON (or press Enter to keep current):\n');
+  print(
+      'Example: {"read":["owner","admin"],"write":["owner"],"public_read":false}');
+  print('\nNew rules: ');
+  final rulesStr = stdin.readLineSync()?.trim() ?? '';
+
+  if (rulesStr.isEmpty) {
+    print('No changes made');
+    return;
+  }
+
+  try {
+    final newRules = jsonDecode(rulesStr) as Map<String, dynamic>;
+    await database.updateCollectionRules(collection.id, newRules);
+    TerminalUI.printSuccess(
+        'Rules updated for collection "\${collection.name}"');
+  } catch (e) {
+    TerminalUI.printError('Invalid JSON: \$e');
+  }
 }
 
-void _adminMenuReports() {
+Future<void> _adminMenuReports() async {
   print('\n[Admin] Generate Reports');
-  print('1. Export Monthly Logs');
+  print('1. Export Log Archive');
   print('2. User Activity Report');
   print('3. Storage Usage Report');
+  print('4. Back');
 
-  print('Enter choice (1-3): ');
+  print('\nEnter choice (1-4): ');
   final choice = stdin.readLineSync();
-  print('[PLACEHOLDER] Report generator would go here');
+
+  switch (choice) {
+    case '1':
+      await reports.exportLogArchive();
+      break;
+    case '2':
+      await reports.generateUserActivityReport(database);
+      break;
+    case '3':
+      await reports.generateStorageReport(database);
+      break;
+    case '4':
+      break;
+    default:
+      TerminalUI.printError('Invalid choice');
+  }
 }

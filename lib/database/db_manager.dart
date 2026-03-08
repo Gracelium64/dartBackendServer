@@ -14,6 +14,12 @@ import 'models.dart';
 import 'migrations.dart';
 import '../config.dart';
 
+extension RowToMap on Row {
+  Map<String, Object?> toMap() {
+    return Map<String, Object?>.from(this);
+  }
+}
+
 /// Main database manager class
 /// Handles all database connections, queries, and transactions
 class DatabaseManager {
@@ -71,18 +77,15 @@ class DatabaseManager {
   /// Create a new user
   Future<User> createUser(User user) async {
     try {
-      final stmt =
-          _db.prepare('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)');
-      stmt
-        ..bind([
-          user.id,
-          user.email,
-          user.passwordHash,
-          user.role,
-          user.createdAt.millisecondsSinceEpoch,
-          user.updatedAt.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      final stmt = _db.prepare('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)');
+      stmt.execute([
+        user.id,
+        user.email,
+        user.passwordHash,
+        user.role,
+        user.createdAt.millisecondsSinceEpoch,
+        user.updatedAt.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       print('[DB] User created: ${user.email}');
@@ -136,24 +139,56 @@ class DatabaseManager {
     }
   }
 
+  /// Update a user's role
+  Future<User?> updateUserRole(String userId, String role) async {
+    try {
+      final stmt = _db.prepare('''
+        UPDATE users
+        SET role = ?, updated_at = ?
+        WHERE id = ?
+      ''');
+      stmt.execute([
+        role,
+        DateTime.now().millisecondsSinceEpoch,
+        userId,
+      ]);
+      stmt.dispose();
+
+      return await getUserById(userId);
+    } catch (e) {
+      print('[DB ERROR] Failed to update user role: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a user (may fail if foreign key constraints exist)
+  Future<void> deleteUser(String userId) async {
+    try {
+      final stmt = _db.prepare('DELETE FROM users WHERE id = ?');
+      stmt.execute([userId]);
+      stmt.dispose();
+    } catch (e) {
+      print('[DB ERROR] Failed to delete user: $e');
+      rethrow;
+    }
+  }
+
   // === COLLECTION OPERATIONS ===
 
   /// Create a new collection
   Future<Collection> createCollection(Collection collection) async {
     try {
       final rulesJson = _jsonEncode(collection.rules);
-      final stmt = _db
-          .prepare('INSERT INTO collections VALUES (?, ?, ?, ?, ?, ?)');
-      stmt
-        ..bind([
-          collection.id,
-          collection.ownerId,
-          collection.name,
-          rulesJson,
-          collection.createdAt.millisecondsSinceEpoch,
-          collection.updatedAt.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      final stmt =
+          _db.prepare('INSERT INTO collections VALUES (?, ?, ?, ?, ?, ?)');
+      stmt.execute([
+        collection.id,
+        collection.ownerId,
+        collection.name,
+        rulesJson,
+        collection.createdAt.millisecondsSinceEpoch,
+        collection.updatedAt.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       print('[DB] Collection created: ${collection.name}');
@@ -167,8 +202,7 @@ class DatabaseManager {
   /// Get collection by ID
   Future<Collection?> getCollection(String collectionId) async {
     try {
-      final stmt =
-          _db.prepare('SELECT * FROM collections WHERE id = ?');
+      final stmt = _db.prepare('SELECT * FROM collections WHERE id = ?');
       final rows = stmt.select([collectionId]);
       stmt.dispose();
 
@@ -202,6 +236,46 @@ class DatabaseManager {
     }
   }
 
+  /// Get all collections (admin only)
+  Future<List<Collection>> getAllCollections() async {
+    try {
+      final rows =
+          _db.select('SELECT * FROM collections ORDER BY created_at DESC');
+      return rows.map((r) {
+        final map = r.toMap();
+        map['rules'] = _jsonDecode(map['rules'] as String);
+        return Collection.fromJson(map);
+      }).toList();
+    } catch (e) {
+      print('[DB ERROR] Failed to get all collections: $e');
+      rethrow;
+    }
+  }
+
+  /// Update collection rules
+  Future<Collection?> updateCollectionRules(
+      String collectionId, Map<String, dynamic> rules) async {
+    try {
+      final rulesJson = _jsonEncode(rules);
+      final stmt = _db.prepare('''
+        UPDATE collections
+        SET rules = ?, updated_at = ?
+        WHERE id = ?
+      ''');
+      stmt.execute([
+        rulesJson,
+        DateTime.now().millisecondsSinceEpoch,
+        collectionId,
+      ]);
+      stmt.dispose();
+
+      return await getCollection(collectionId);
+    } catch (e) {
+      print('[DB ERROR] Failed to update collection rules: $e');
+      rethrow;
+    }
+  }
+
   // === DOCUMENT OPERATIONS ===
 
   /// Create a new document
@@ -210,16 +284,14 @@ class DatabaseManager {
       final dataJson = _jsonEncode(document.data);
       final stmt =
           _db.prepare('INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?)');
-      stmt
-        ..bind([
-          document.id,
-          document.collectionId,
-          document.ownerId,
-          dataJson,
-          document.createdAt.millisecondsSinceEpoch,
-          document.updatedAt.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      stmt.execute([
+        document.id,
+        document.collectionId,
+        document.ownerId,
+        dataJson,
+        document.createdAt.millisecondsSinceEpoch,
+        document.updatedAt.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       print('[DB] Document created: ${document.id}');
@@ -284,13 +356,11 @@ class DatabaseManager {
         SET data = ?, updated_at = ? 
         WHERE id = ?
       ''');
-      stmt
-        ..bind([
-          dataJson,
-          document.updatedAt.millisecondsSinceEpoch,
-          document.id,
-        ])
-        ..execute();
+      stmt.execute([
+        dataJson,
+        document.updatedAt.millisecondsSinceEpoch,
+        document.id,
+      ]);
       stmt.dispose();
 
       print('[DB] Document updated: ${document.id}');
@@ -311,8 +381,7 @@ class DatabaseManager {
       deleteMediaStmt.dispose();
 
       // Delete the document
-      final deleteDocStmt =
-          _db.prepare('DELETE FROM documents WHERE id = ?');
+      final deleteDocStmt = _db.prepare('DELETE FROM documents WHERE id = ?');
       deleteDocStmt.execute([documentId]);
       deleteDocStmt.dispose();
 
@@ -332,19 +401,17 @@ class DatabaseManager {
         INSERT INTO media_blobs 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''');
-      stmt
-        ..bind([
-          media.id,
-          media.documentId,
-          media.fileName,
-          media.mimeType,
-          media.originalSize,
-          media.compressedSize,
-          media.compressionAlgo,
-          media.blobData,
-          media.createdAt.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      stmt.execute([
+        media.id,
+        media.documentId,
+        media.fileName,
+        media.mimeType,
+        media.originalSize,
+        media.compressedSize,
+        media.compressionAlgo,
+        media.blobData,
+        media.createdAt.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       print('[DB] Media blob created: ${media.id}');
@@ -371,6 +438,35 @@ class DatabaseManager {
     }
   }
 
+  /// Get all media blobs for a document
+  Future<List<MediaBlob>> getMediaBlobsByDocument(String documentId) async {
+    try {
+      final stmt =
+          _db.prepare('SELECT * FROM media_blobs WHERE document_id = ?');
+      final rows = stmt.select([documentId]);
+      stmt.dispose();
+
+      return rows.map((r) => MediaBlob.fromJson(r.toMap())).toList();
+    } catch (e) {
+      print('[DB ERROR] Failed to get media blobs for document: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a media blob
+  Future<void> deleteMediaBlob(String mediaId) async {
+    try {
+      final stmt = _db.prepare('DELETE FROM media_blobs WHERE id = ?');
+      stmt.execute([mediaId]);
+      stmt.dispose();
+
+      print('[DB] Media blob deleted: $mediaId');
+    } catch (e) {
+      print('[DB ERROR] Failed to delete media blob: $e');
+      rethrow;
+    }
+  }
+
   // === AUDIT LOG OPERATIONS ===
 
   /// Log an action to audit trail
@@ -380,18 +476,16 @@ class DatabaseManager {
         INSERT INTO audit_log 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ''');
-      stmt
-        ..bind([
-          entry.id,
-          entry.userId,
-          entry.action,
-          entry.resourceType,
-          entry.resourceId,
-          entry.status,
-          entry.errorMessage,
-          entry.timestamp.millisecondsSinceEpoch,
-        ])
-        ..execute();
+      stmt.execute([
+        entry.id,
+        entry.userId,
+        entry.action,
+        entry.resourceType,
+        entry.resourceId,
+        entry.status,
+        entry.errorMessage,
+        entry.timestamp.millisecondsSinceEpoch,
+      ]);
       stmt.dispose();
 
       return entry;
@@ -446,8 +540,7 @@ class DatabaseManager {
       [List<dynamic>? params]) {
     try {
       final stmt = _db.prepare(sql);
-      final result =
-          params == null ? stmt.select() : stmt.select(params);
+      final result = params == null ? stmt.select() : stmt.select(params);
       stmt.dispose();
 
       return result.map((r) => r.toMap()).toList();
@@ -465,7 +558,8 @@ class DatabaseManager {
           _db.select('SELECT COUNT(*) as count FROM collections');
       final documentCount =
           _db.select('SELECT COUNT(*) as count FROM documents');
-      final mediaCount = _db.select('SELECT COUNT(*) as count FROM media_blobs');
+      final mediaCount =
+          _db.select('SELECT COUNT(*) as count FROM media_blobs');
 
       return {
         'users': userCount.first.toMap()['count'],

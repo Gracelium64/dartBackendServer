@@ -4,12 +4,21 @@
 // This is similar to how a Flutter app sets up its UI tree with Material/Cupertino widgets.
 // Here, we're setting up HTTP routes and middleware (like interceptors) to handle API requests.
 
+import 'dart:async';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_cors_headers/shelf_cors_headers.dart';
+import 'package:shelf/shelf_io.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:path/path.dart' as path;
 import 'config.dart';
+import 'auth/auth_service.dart';
+import 'auth/rule_engine.dart';
+import 'database/db_manager.dart';
+import 'database/models.dart';
+import 'logging/logger.dart';
+import 'api/crud_handlers.dart' as crud;
 
 /// Main server class that orchestrates all HTTP handling
 /// Think of this as the main entry point for the backend, similar to the main
@@ -19,9 +28,28 @@ class ShadowAppServer {
   late Router _router;
 
   /// Initialize and start the server
-  Future<void> start(String host, int port) async {
+  Future<void> start(
+    String host,
+    int port, {
+    String? dbPathOverride,
+    String? logLevelOverride,
+  }) async {
     // Initialize configuration
+    globalConfig = ServerConfig();
     await globalConfig.load();
+    globalConfig.serverHost = host;
+    globalConfig.serverPort = port;
+    if (dbPathOverride != null && dbPathOverride.isNotEmpty) {
+      globalConfig.dbPath = dbPathOverride;
+    }
+    if (logLevelOverride != null && logLevelOverride.isNotEmpty) {
+      globalConfig.logLevel = logLevelOverride;
+    }
+
+    // Initialize core services
+    database = DatabaseManager();
+    await database.initialize(globalConfig.dbPath);
+    await logger.initialize();
 
     print('''
 ╔════════════════════════════════════════════════════════════════════════════════╗
@@ -42,8 +70,7 @@ class ShadowAppServer {
         .addHandler(_router);
 
     // Start listening
-    _httpServer = await HttpServer.bind(host, port);
-    _httpServer.listen(handler);
+    _httpServer = await serve(handler, host, port);
 
     print('''
 ✓ Database initialized at ${globalConfig.dbPath}
@@ -67,18 +94,32 @@ Press Ctrl+C to stop the server gracefully.
     _router.post('/auth/refresh', _refreshHandler);
 
     // CRUD endpoints
-    _router.post('/api/collections/<collectionId>/documents', _createDocHandler);
-    _router.get('/api/collections/<collectionId>/documents/<docId>',
-        _readDocHandler);
-    _router.put('/api/collections/<collectionId>/documents/<docId>',
-        _updateDocHandler);
+    _router.post(
+      '/api/collections/<collectionId>/documents',
+      _createDocHandler,
+    );
+    _router.get(
+      '/api/collections/<collectionId>/documents/<docId>',
+      _readDocHandler,
+    );
+    _router.put(
+      '/api/collections/<collectionId>/documents/<docId>',
+      _updateDocHandler,
+    );
     _router.delete(
-        '/api/collections/<collectionId>/documents/<docId>', _deleteDocHandler);
+      '/api/collections/<collectionId>/documents/<docId>',
+      _deleteDocHandler,
+    );
     _router.get('/api/collections/<collectionId>/documents', _listDocsHandler);
 
     // Media endpoints
     _router.post('/api/media/upload', _uploadMediaHandler);
     _router.get('/api/media/download/<mediaId>', _downloadMediaHandler);
+    _router.get('/api/media/metadata/<mediaId>', _mediaMetadataHandler);
+
+    // Log endpoints (for admin GUI)
+    _router.get('/api/logs/recent', _recentLogsHandler);
+    _router.get('/api/logs/stream', _logsStreamHandler);
 
     // Catch-all for 404
     _router.all('/<ignored|.*>', _notFoundHandler);
@@ -88,45 +129,60 @@ Press Ctrl+C to stop the server gracefully.
   /// Explanation: Middleware intercepts all requests before they reach handlers.
   /// This is similar to didChangeAppLifecycleState() in Flutter—a hook to process
   /// events before they're fully handled.
-  Middleware _loggingMiddleware = (Handler innerHandler) {
-    return (Request request) async {
-      final startTime = DateTime.now();
-      final response = await innerHandler(request);
-      final duration = DateTime.now().difference(startTime);
+  Middleware get _loggingMiddleware {
+    return (Handler innerHandler) {
+      return (Request request) async {
+        final startTime = DateTime.now();
+        final response = await innerHandler(request);
+        final duration = DateTime.now().difference(startTime);
 
-      print(
-          '[${request.method}] ${request.url.path} → ${response.statusCode} (${duration.inMilliseconds}ms)');
+        print(
+          '[${request.method}] ${request.url.path} → ${response.statusCode} (${duration.inMilliseconds}ms)',
+        );
 
-      return response;
+        return response;
+      };
     };
-  };
+  }
 
   /// Middleware: Check JWT authentication on protected routes
-  Middleware _authMiddleware = (Handler innerHandler) {
-    return (Request request) async {
-      // Routes that don't need auth
-      final publicRoutes = ['/health', '/auth/signup', '/auth/login'];
-      if (publicRoutes.contains(request.url.path)) {
-        return innerHandler(request);
-      }
+  Middleware get _authMiddleware {
+    return (Handler innerHandler) {
+      return (Request request) async {
+        // Routes that don't need auth
+        final publicRoutes = [
+          '/health',
+          '/auth/signup',
+          '/auth/login',
+          '/api/logs/recent',
+          '/api/logs/stream',
+        ];
+        if (publicRoutes.contains(request.url.path)) {
+          print('[AUTH] Public route allowed: ${request.url.path}');
+          return innerHandler(request);
+        }
 
-      // Check for Authorization header
-      final authHeader = request.headers['authorization'];
-      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
-        return Response.unauthorized(
-          jsonEncode({'success': false, 'error': 'Missing or invalid token'}),
-        );
-      }
+        // Check for Authorization header
+        final authHeader = request.headers['authorization'];
+        if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+          return _createJsonErrorResponse(401, 'Missing or invalid token');
+        }
 
-      // TODO: Validate JWT token
-      // For now, pass through
-      return innerHandler(request);
+        final token = authHeader.substring(7);
+        final claims = AuthService.validateToken(token);
+        if (claims == null) {
+          return _createJsonErrorResponse(401, 'Invalid or expired token');
+        }
+
+        return innerHandler(request.change(context: {'claims': claims}));
+      };
     };
-  };
+  }
 
   /// Handler: Health check endpoint
   /// Used to verify server is running
   Future<Response> _healthHandler(Request request) async {
+    print('[!!!TEST!!!] Health endpoint called');
     return Response.ok(
       jsonEncode({
         'status': 'ok',
@@ -149,23 +205,23 @@ Press Ctrl+C to stop the server gracefully.
       final password = data['password'] as String?;
 
       if (email == null || password == null) {
-        return Response.badRequest(
-          body: jsonEncode({
-            'success': false,
-            'error': 'Email and password required'
-          }),
+        return _jsonErrorResponse(400, 'Email and password required');
+      }
+
+      final result = await AuthService.signup(email, password);
+      if (result['success'] != true) {
+        return _jsonErrorResponse(
+          400,
+          result['error'] as String? ?? 'Signup failed',
         );
       }
 
-      // TODO: Implement actual signup
-      // For now, return mock response
       return Response.ok(
         jsonEncode({
           'success': true,
           'data': {
-            'id': 'user-abc123',
-            'email': email,
-            'token': 'jwt_token_here',
+            ...((result['user'] as Map<String, dynamic>?) ?? {}),
+            'token': result['token'],
           },
           'timestamp': DateTime.now().toIso8601String(),
         }),
@@ -188,23 +244,23 @@ Press Ctrl+C to stop the server gracefully.
       final password = data['password'] as String?;
 
       if (email == null || password == null) {
-        return Response.badRequest(
-          body: jsonEncode({
-            'success': false,
-            'error': 'Email and password required'
-          }),
+        return _jsonErrorResponse(400, 'Email and password required');
+      }
+
+      final result = await AuthService.login(email, password);
+      if (result['success'] != true) {
+        return _jsonErrorResponse(
+          401,
+          result['error'] as String? ?? 'Login failed',
         );
       }
 
-      // TODO: Implement actual login with password verification
-      // For now, return mock response
       return Response.ok(
         jsonEncode({
           'success': true,
           'data': {
-            'id': 'user-xyz789',
-            'email': email,
-            'token': 'jwt_token_here',
+            ...((result['user'] as Map<String, dynamic>?) ?? {}),
+            'token': result['token'],
           },
           'timestamp': DateTime.now().toIso8601String(),
         }),
@@ -220,11 +276,34 @@ Press Ctrl+C to stop the server gracefully.
   /// Handler: Refresh JWT token
   Future<Response> _refreshHandler(Request request) async {
     try {
-      // TODO: Implement token refresh
+      String? token;
+      final authHeader = request.headers['authorization'];
+      if (authHeader != null && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      } else {
+        final body = await request.readAsString();
+        if (body.isNotEmpty) {
+          final data = jsonDecode(body) as Map<String, dynamic>;
+          token = data['token'] as String?;
+        }
+      }
+
+      if (token == null || token.isEmpty) {
+        return _jsonErrorResponse(400, 'Token required');
+      }
+
+      final result = await AuthService.refreshToken(token);
+      if (result['success'] != true) {
+        return _jsonErrorResponse(
+          401,
+          result['error'] as String? ?? 'Token refresh failed',
+        );
+      }
+
       return Response.ok(
         jsonEncode({
           'success': true,
-          'data': {'token': 'new_jwt_token_here'},
+          'data': {'token': result['token']},
           'timestamp': DateTime.now().toIso8601String(),
         }),
         headers: {'Content-Type': 'application/json'},
@@ -238,157 +317,115 @@ Press Ctrl+C to stop the server gracefully.
 
   /// Handler: Create document
   Future<Response> _createDocHandler(Request request) async {
-    try {
-      final collectionId = request.params['collectionId'];
-      final body = await request.readAsString();
-      final data = jsonDecode(body) as Map<String, dynamic>;
-
-      // TODO: Implement actual document creation
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {
-            'id': 'doc-abc123',
-            'collection': collectionId,
-            'data': data,
-            'created_at': DateTime.now().toIso8601String(),
-          },
-          'timestamp': DateTime.now().toIso8601String(),
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
-    } catch (e) {
-      return Response.internalServerError(
-        body: jsonEncode({'success': false, 'error': e.toString()}),
-      );
-    }
+    return crud.handleCreateDocument(request);
   }
 
   /// Handler: Read document
   Future<Response> _readDocHandler(Request request) async {
-    try {
-      final collectionId = request.params['collectionId'];
-      final docId = request.params['docId'];
-
-      // TODO: Implement actual document retrieval
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {
-            'id': docId,
-            'collection': collectionId,
-            'data': {'example': 'data'},
-            'created_at': DateTime.now().toIso8601String(),
-          },
-          'timestamp': DateTime.now().toIso8601String(),
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
-    } catch (e) {
-      return Response.internalServerError(
-        body: jsonEncode({'success': false, 'error': e.toString()}),
-      );
-    }
+    return crud.handleReadDocument(request);
   }
 
   /// Handler: Update document
   Future<Response> _updateDocHandler(Request request) async {
-    try {
-      final collectionId = request.params['collectionId'];
-      final docId = request.params['docId'];
-      final body = await request.readAsString();
-      final data = jsonDecode(body) as Map<String, dynamic>;
-
-      // TODO: Implement actual document update
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {
-            'id': docId,
-            'collection': collectionId,
-            'data': data,
-            'updated_at': DateTime.now().toIso8601String(),
-          },
-          'timestamp': DateTime.now().toIso8601String(),
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
-    } catch (e) {
-      return Response.internalServerError(
-        body: jsonEncode({'success': false, 'error': e.toString()}),
-      );
-    }
+    return crud.handleUpdateDocument(request);
   }
 
   /// Handler: Delete document
   Future<Response> _deleteDocHandler(Request request) async {
-    try {
-      final collectionId = request.params['collectionId'];
-      final docId = request.params['docId'];
-
-      // TODO: Implement actual document deletion
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': {'deleted': true},
-          'timestamp': DateTime.now().toIso8601String(),
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
-    } catch (e) {
-      return Response.internalServerError(
-        body: jsonEncode({'success': false, 'error': e.toString()}),
-      );
-    }
+    return crud.handleDeleteDocument(request);
   }
 
   /// Handler: List documents in collection
   Future<Response> _listDocsHandler(Request request) async {
-    try {
-      final collectionId = request.params['collectionId'];
-      final limit = int.tryParse(request.url.queryParameters['limit'] ?? '10');
-      final offset = int.tryParse(request.url.queryParameters['offset'] ?? '0');
-
-      // TODO: Implement actual document listing
-      return Response.ok(
-        jsonEncode({
-          'success': true,
-          'data': [
-            {
-              'id': 'doc-1',
-              'data': {'title': 'Example 1'},
-              'created_at': DateTime.now().toIso8601String(),
-            },
-            {
-              'id': 'doc-2',
-              'data': {'title': 'Example 2'},
-              'created_at': DateTime.now().toIso8601String(),
-            },
-          ],
-          'pagination': {'limit': limit, 'offset': offset, 'total': 2},
-          'timestamp': DateTime.now().toIso8601String(),
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
-    } catch (e) {
-      return Response.internalServerError(
-        body: jsonEncode({'success': false, 'error': e.toString()}),
-      );
-    }
+    return crud.handleListDocuments(request);
   }
 
   /// Handler: Upload media
   Future<Response> _uploadMediaHandler(Request request) async {
     try {
-      // TODO: Implement actual media upload with compression
+      final claims = _claimsFromRequest(request);
+      if (claims == null) {
+        return _jsonErrorResponse(401, 'Not authenticated');
+      }
+
+      final multipart = await _parseMultipart(request);
+      if (multipart == null) {
+        return _jsonErrorResponse(400, 'Invalid multipart upload');
+      }
+
+      final destinationCollection = multipart.fields['destination_collection'];
+      final destinationDocId = multipart.fields['destination_doc_id'];
+      if (destinationCollection == null || destinationDocId == null) {
+        return _jsonErrorResponse(
+          400,
+          'Destination collection and document required',
+        );
+      }
+
+      if (multipart.fileBytes.isEmpty) {
+        return _jsonErrorResponse(400, 'File is empty');
+      }
+
+      final userId = claims['sub'] as String;
+      final user = await database.getUserById(userId);
+      if (user == null) {
+        return _jsonErrorResponse(403, 'User not found');
+      }
+
+      final collection = await database.getCollection(destinationCollection);
+      if (collection == null) {
+        return _jsonErrorResponse(404, 'Collection not found');
+      }
+
+      if (!RuleEngine.canWrite(userId, user.role, collection)) {
+        await database.logAction(
+          AuditLog(
+            userId: userId,
+            action: 'UPLOAD',
+            resourceType: 'media',
+            resourceId: destinationDocId,
+            status: 'failed',
+            errorMessage: 'Permission denied',
+          ),
+        );
+        return _jsonErrorResponse(403, 'Permission denied');
+      }
+
+      final doc = await database.getDocument(destinationDocId);
+      if (doc == null || doc.collectionId != destinationCollection) {
+        return _jsonErrorResponse(404, 'Document not found');
+      }
+
+      final compressedBytes = gzip.encode(multipart.fileBytes);
+      final media = MediaBlob(
+        documentId: destinationDocId,
+        fileName: multipart.fileName,
+        mimeType: multipart.mimeType,
+        originalSize: multipart.fileBytes.length,
+        compressedSize: compressedBytes.length,
+        compressionAlgo: 'gzip',
+        blobData: compressedBytes,
+      );
+
+      await database.createMediaBlob(media);
+      await database.logAction(
+        AuditLog(
+          userId: userId,
+          action: 'UPLOAD',
+          resourceType: 'media',
+          resourceId: media.id,
+          status: 'success',
+        ),
+      );
+
       return Response.ok(
         jsonEncode({
           'success': true,
           'data': {
-            'id': 'media-abc123',
-            'original_size': 5000000,
-            'compressed_size': 1200000,
-            'compression_algo': 'gzip',
+            'id': media.id,
+            'original_size': media.originalSize,
+            'compressed_size': media.compressedSize,
+            'compression_algo': media.compressionAlgo,
           },
           'timestamp': DateTime.now().toIso8601String(),
         }),
@@ -404,12 +441,33 @@ Press Ctrl+C to stop the server gracefully.
   /// Handler: Download media
   Future<Response> _downloadMediaHandler(Request request) async {
     try {
-      final mediaId = request.params['mediaId'];
+      final claims = _claimsFromRequest(request);
+      if (claims == null) {
+        return _jsonErrorResponse(401, 'Not authenticated');
+      }
 
-      // TODO: Implement actual media download with decompression
+      final mediaId = request.params['mediaId'];
+      if (mediaId == null || mediaId.isEmpty) {
+        return _jsonErrorResponse(400, 'Media ID required');
+      }
+
+      final media = await database.getMediaBlob(mediaId);
+      if (media == null) {
+        return _jsonErrorResponse(404, 'Media not found');
+      }
+
+      List<int> bytes = media.blobData;
+      if (media.compressionAlgo == 'gzip') {
+        bytes = gzip.decode(bytes);
+      }
+
       return Response.ok(
-        'binary_media_data_here',
-        headers: {'Content-Type': 'application/octet-stream'},
+        bytes,
+        headers: {
+          'Content-Type': media.mimeType,
+          'Content-Disposition':
+              'attachment; filename="${path.basename(media.fileName)}"',
+        },
       );
     } catch (e) {
       return Response.internalServerError(
@@ -429,6 +487,189 @@ Press Ctrl+C to stop the server gracefully.
     );
   }
 
+  /// Handler: Media metadata
+  Future<Response> _mediaMetadataHandler(Request request) async {
+    try {
+      final claims = _claimsFromRequest(request);
+      if (claims == null) {
+        return _jsonErrorResponse(401, 'Not authenticated');
+      }
+
+      final mediaId = request.params['mediaId'];
+      if (mediaId == null || mediaId.isEmpty) {
+        return _jsonErrorResponse(400, 'Media ID required');
+      }
+
+      final media = await database.getMediaBlob(mediaId);
+      if (media == null) {
+        return _jsonErrorResponse(404, 'Media not found');
+      }
+
+      return Response.ok(
+        jsonEncode({
+          'success': true,
+          'data': {
+            'id': media.id,
+            'document_id': media.documentId,
+            'file_name': media.fileName,
+            'mime_type': media.mimeType,
+            'original_size': media.originalSize,
+            'compressed_size': media.compressedSize,
+            'compression_algo': media.compressionAlgo,
+            'uploaded_at': media.createdAt.toIso8601String(),
+          },
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({'success': false, 'error': e.toString()}),
+      );
+    }
+  }
+
+  /// Helper: Create JSON error response
+  Response _jsonErrorResponse(int statusCode, String message) {
+    return _createJsonErrorResponse(statusCode, message);
+  }
+
+  /// Helper: Extract claims from request context
+  Map<String, dynamic>? _claimsFromRequest(Request request) {
+    return request.context['claims'] as Map<String, dynamic>?;
+  }
+
+  /// Handler: Get recent logs
+  Future<Response> _recentLogsHandler(Request request) async {
+    try {
+      // Debug: Always return success for now to test
+      print('[LOGS] Handler called for ${request.url.path}');
+      final limit =
+          int.tryParse(request.url.queryParameters['limit'] ?? '100') ?? 100;
+      final logs = logger.getRecentLogs(count: limit);
+
+      return Response.ok(
+        jsonEncode({
+          'success': true,
+          'data': logs.map((log) => log.toJson()).toList(),
+          'count': logs.length,
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({'success': false, 'error': e.toString()}),
+      );
+    }
+  }
+
+  /// Handler: Stream logs (Server-Sent Events)
+  Future<Response> _logsStreamHandler(Request request) async {
+    try {
+      final controller = StreamController<String>();
+      final subscription = logger.getLiveStream().listen((log) {
+        controller.add('data: ${jsonEncode(log.toJson())}\n\n');
+      });
+
+      // Clean up when connection closes
+      request.read().listen(
+        null,
+        onDone: () {
+          subscription.cancel();
+          controller.close();
+        },
+      );
+
+      return Response.ok(
+        controller.stream,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({'success': false, 'error': e.toString()}),
+      );
+    }
+  }
+
+  /// Helper: Parse multipart form data
+  /// WARNING: This is a simplified implementation for demonstration purposes.
+  /// For production use with binary files (images, videos, etc.), use a proper
+  /// multipart parser library like the `mime` package's MimeMultipartTransformer.
+  /// The current implementation using `codeUnits` will corrupt binary files.
+  Future<_MultipartData?> _parseMultipart(Request request) async {
+    try {
+      final contentType = request.headers['content-type'];
+      if (contentType == null || !contentType.contains('multipart/form-data')) {
+        return null;
+      }
+
+      // Extract boundary from content-type
+      final boundary = contentType.split('boundary=').last;
+      final body = await request.readAsString();
+
+      // Parse multipart data
+      final parts = body.split('--$boundary');
+      final fields = <String, String>{};
+      List<int> fileBytes = [];
+      String fileName = '';
+      String mimeType = 'application/octet-stream';
+
+      for (final part in parts) {
+        if (part.isEmpty || part.trim() == '--') continue;
+
+        // Parse headers and content
+        final sections = part.split('\r\n\r\n');
+        if (sections.length < 2) continue;
+
+        final headers = sections[0];
+        final content = sections.sublist(1).join('\r\n\r\n').trim();
+
+        // Check if it's a file
+        if (headers.contains('filename=')) {
+          final fileNameMatch = RegExp(
+            r'filename="([^"]+)"',
+          ).firstMatch(headers);
+          if (fileNameMatch != null) {
+            fileName = fileNameMatch.group(1)!;
+          }
+
+          final contentTypeMatch = RegExp(
+            r'Content-Type:\s*([^\r\n]+)',
+          ).firstMatch(headers);
+          if (contentTypeMatch != null) {
+            mimeType = contentTypeMatch.group(1)!.trim();
+          }
+
+          // Convert content to bytes
+          // Note: This simplified approach treats content as text.
+          // For binary files in production, use request.read() and proper multipart parsing.
+          fileBytes = content.codeUnits;
+        } else {
+          // It's a regular field
+          final nameMatch = RegExp(r'name="([^"]+)"').firstMatch(headers);
+          if (nameMatch != null) {
+            final fieldName = nameMatch.group(1)!;
+            fields[fieldName] = content;
+          }
+        }
+      }
+
+      return _MultipartData(
+        fields: fields,
+        fileBytes: fileBytes,
+        fileName: fileName,
+        mimeType: mimeType,
+      );
+    } catch (e) {
+      print('[ERROR] Failed to parse multipart: $e');
+      return null;
+    }
+  }
+
   /// Gracefully shutdown the server
   Future<void> stop() async {
     print('\n[INFO] Received shutdown signal');
@@ -439,10 +680,48 @@ Press Ctrl+C to stop the server gracefully.
   }
 }
 
+/// Simple multipart data holder
+class _MultipartData {
+  final Map<String, String> fields;
+  final List<int> fileBytes;
+  final String fileName;
+  final String mimeType;
+
+  _MultipartData({
+    required this.fields,
+    required this.fileBytes,
+    required this.fileName,
+    required this.mimeType,
+  });
+}
+
+/// Static helper to create JSON error responses (used in middleware)
+Response _createJsonErrorResponse(int statusCode, String message) {
+  return Response(
+    statusCode,
+    body: jsonEncode({
+      'success': false,
+      'error': message,
+      'timestamp': DateTime.now().toIso8601String(),
+    }),
+    headers: {'Content-Type': 'application/json'},
+  );
+}
+
 /// Factory to create and run server
-Future<void> runServer(String host, int port) async {
+Future<void> runServer(
+  String host,
+  int port, {
+  String? dbPathOverride,
+  String? logLevelOverride,
+}) async {
   final server = ShadowAppServer();
-  await server.start(host, port);
+  await server.start(
+    host,
+    port,
+    dbPathOverride: dbPathOverride,
+    logLevelOverride: logLevelOverride,
+  );
 
   // Handle Ctrl+C gracefully
   ProcessSignal.sigint.watch().listen((_) async {

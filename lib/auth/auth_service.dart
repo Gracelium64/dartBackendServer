@@ -7,7 +7,6 @@
 
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-import 'package:uuid/uuid.dart';
 import 'password_utils.dart';
 import '../database/models.dart';
 import '../database/db_manager.dart';
@@ -185,7 +184,7 @@ class AuthService {
         return null;
       }
 
-      final header = jsonDecode(_base64UrlDecode(parts[0])) as Map;
+      jsonDecode(_base64UrlDecode(parts[0])) as Map;
       final payload = jsonDecode(_base64UrlDecode(parts[1])) as Map<String, dynamic>;
       final signature = parts[2];
 

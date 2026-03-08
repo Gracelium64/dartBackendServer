@@ -21,8 +21,8 @@ Build a backend server written **entirely in Dart** that teaches you backend dev
 - **Database**: SQLite with CRUD operations on documents in collections
 - **Media Storage**: Upload, compress, and store images/videos directly in database
 - **Access Control**: Per-collection permission rules (read/write/public)
-- **Live Logging**: Real-time audit trail of all database actions
-- **Admin Console**: Full database management terminal UI
+- **Live Logging**: Real-time audit trail of all database actions with log-tail feature
+- **CLI Admin Console**: Full database management via interactive terminal interface
 - **Flutter SDK**: Simple, intuitive package for your Flutter apps
 - **Gmail Integration**: Monthly log reports sent automatically to admin email
 - **Production Ready**: Designed to scale from local dev to cloud deployment
@@ -42,7 +42,7 @@ dart bin/main.dart server --port 8080
 dart bin/main.dart log-tail --follow
 
 # 4. Admin console (third terminal)
-dart bin/main.dart admin --admin-key <key-from-startup>
+dart bin/main.dart admin
 ```
 
 **See**: [Operator Manual](docs/OPERATOR_MANUAL.md)
@@ -75,12 +75,12 @@ await ShadowApp.collection('notes').delete(doc.id);
 
 ## 📖 Complete Documentation
 
-| File | For | Contains |
-|------|-----|----------|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Developers | System design, data models, database schema, API contract |
-| [OPERATOR_MANUAL.md](docs/OPERATOR_MANUAL.md) | Operators | Setup, running, monitoring, troubleshooting |
-| [FLUTTER_SDK_GUIDE.md](docs/FLUTTER_SDK_GUIDE.md) | Flutter Devs | SDK usage, examples, learning notes |
-| [MAINTENANCE_SCALING_GUIDE.md](docs/MAINTENANCE_SCALING_GUIDE.md) | DevOps | Backup, scaling, deployment strategies |
+| File                                                              | For          | Contains                                                  |
+| ----------------------------------------------------------------- | ------------ | --------------------------------------------------------- |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md)                           | Developers   | System design, data models, database schema, API contract |
+| [OPERATOR_MANUAL.md](docs/OPERATOR_MANUAL.md)                     | Operators    | Setup, running, monitoring, troubleshooting               |
+| [FLUTTER_SDK_GUIDE.md](docs/FLUTTER_SDK_GUIDE.md)                 | Flutter Devs | SDK usage, examples, learning notes                       |
+| [MAINTENANCE_SCALING_GUIDE.md](docs/MAINTENANCE_SCALING_GUIDE.md) | DevOps       | Backup, scaling, deployment strategies                    |
 
 ## 🏗️ Project Structure
 
@@ -195,17 +195,20 @@ Every file contains extensive **inline code comments** explaining how things wor
 ## 🌐 Deployment
 
 ### Local Dev
+
 - SQLite (file-based)
 - Run on localhost:8080
 - Everything self-contained
 
 ### Production (Small)
+
 - Single Ubuntu server
 - SQLite + WAL mode
 - Gmail for log reports
 - Monitor with log-tail
 
 ### Production (Large)
+
 - PostgreSQL cluster
 - Multiple server instances
 - Redis caching
