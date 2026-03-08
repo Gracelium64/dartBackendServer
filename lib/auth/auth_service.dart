@@ -25,7 +25,10 @@ class AuthService {
       }
 
       if (password.length < 8) {
-        return {'success': false, 'error': 'Password must be at least 8 characters'};
+        return {
+          'success': false,
+          'error': 'Password must be at least 8 characters'
+        };
       }
 
       if (!_isValidEmail(email)) {
@@ -187,7 +190,8 @@ class AuthService {
       }
 
       jsonDecode(_base64UrlDecode(parts[0])) as Map;
-      final payload = jsonDecode(_base64UrlDecode(parts[1])) as Map<String, dynamic>;
+      final payload =
+          jsonDecode(_base64UrlDecode(parts[1])) as Map<String, dynamic>;
       final signature = parts[2];
 
       // Verify signature
