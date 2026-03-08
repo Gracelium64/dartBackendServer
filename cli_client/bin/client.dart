@@ -134,14 +134,16 @@ class ShadowAppClient {
     try {
       final response = await request('GET', '/api/users');
       if (response.statusCode == 200) {
-        final users = jsonDecode(response.body) as List;
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final users = (payload['data'] as List?) ?? const [];
         print('\n📋 Users (${users.length}):');
         for (final user in users) {
           print(
               '  - ${user['email']} (${user['id'].substring(0, 8)}) [${user['role']}]');
         }
       } else {
-        print('❌ Failed to list users: ${response.statusCode}');
+        print(
+            '❌ Failed to list users (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
       print('❌ Error: $e');
@@ -153,14 +155,16 @@ class ShadowAppClient {
     try {
       final response = await request('GET', '/api/collections');
       if (response.statusCode == 200) {
-        final collections = jsonDecode(response.body) as List;
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final collections = (payload['data'] as List?) ?? const [];
         print('\n📁 Collections (${collections.length}):');
         for (final col in collections) {
           print(
               '  - ${col['name']} (${col['id'].substring(0, 8)}) owner: ${col['owner_id'].substring(0, 8)}');
         }
       } else {
-        print('❌ Failed to list collections: ${response.statusCode}');
+        print(
+            '❌ Failed to list collections (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
       print('❌ Error: $e');
@@ -173,7 +177,8 @@ class ShadowAppClient {
       final response =
           await request('GET', '/api/collections/$collectionId/documents');
       if (response.statusCode == 200) {
-        final docs = jsonDecode(response.body) as List;
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final docs = (payload['data'] as List?) ?? const [];
         print('\n📄 Documents in collection (${docs.length}):');
         for (final doc in docs) {
           print(
@@ -181,7 +186,8 @@ class ShadowAppClient {
           print('    data: ${jsonEncode(doc['data'])}');
         }
       } else {
-        print('❌ Failed to list documents: ${response.statusCode}');
+        print(
+            '❌ Failed to list documents (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
       print('❌ Error: $e');
@@ -196,7 +202,8 @@ class ShadowAppClient {
       });
 
       if (response.statusCode == 201) {
-        final col = jsonDecode(response.body);
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final col = payload['data'] as Map<String, dynamic>;
         print('✓ Collection created: $name (ID: ${col['id'].substring(0, 8)})');
       } else {
         print('❌ Failed to create collection: ${response.body}');
@@ -212,12 +219,11 @@ class ShadowAppClient {
     try {
       final response = await request(
           'POST', '/api/collections/$collectionId/documents',
-          body: {
-            'data': data,
-          });
+          body: data);
 
       if (response.statusCode == 201) {
-        final doc = jsonDecode(response.body);
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final doc = payload['data'] as Map<String, dynamic>;
         print('✓ Document created (ID: ${doc['id'].substring(0, 8)})');
       } else {
         print('❌ Failed to create document: ${response.body}');
@@ -233,15 +239,16 @@ class ShadowAppClient {
       final response = await request(
           'GET', '/api/collections/$collectionId/documents/$documentId');
       if (response.statusCode == 200) {
-        final doc = jsonDecode(response.body);
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final doc = payload['data'] as Map<String, dynamic>;
         print('\n📄 Document:');
         print('  ID: ${doc['id']}');
         print('  Collection: ${doc['collection_id']}');
-        print('  Owner: ${doc['owner_id']}');
         print('  Data: ${_formatJson(doc['data'])}');
         print('  Created: ${doc['created_at']}');
       } else {
-        print('❌ Failed to read document: ${response.statusCode}');
+        print(
+            '❌ Failed to read document (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
       print('❌ Error: $e');
@@ -254,9 +261,7 @@ class ShadowAppClient {
     try {
       final response = await request(
           'PUT', '/api/collections/$collectionId/documents/$documentId',
-          body: {
-            'data': data,
-          });
+          body: data);
 
       if (response.statusCode == 200) {
         print('✓ Document updated');
@@ -274,7 +279,7 @@ class ShadowAppClient {
       final response = await request(
           'DELETE', '/api/collections/$collectionId/documents/$documentId');
 
-      if (response.statusCode == 204) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         print('✓ Document deleted');
       } else {
         print('❌ Failed to delete document: ${response.statusCode}');

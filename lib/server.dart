@@ -94,6 +94,9 @@ Press Ctrl+C to stop the server gracefully.
     _router.post('/auth/refresh', _refreshHandler);
 
     // CRUD endpoints
+    _router.get('/api/users', _listUsersHandler);
+    _router.get('/api/collections', _listCollectionsHandler);
+    _router.post('/api/collections', _createCollectionHandler);
     _router.post(
       '/api/collections/<collectionId>/documents',
       _createDocHandler,
@@ -340,6 +343,162 @@ Press Ctrl+C to stop the server gracefully.
   /// Handler: Create document
   Future<Response> _createDocHandler(Request request) async {
     return crud.handleCreateDocument(request);
+  }
+
+  /// Handler: List users (admin only)
+  Future<Response> _listUsersHandler(Request request) async {
+    try {
+      final claims = _claimsFromRequest(request);
+      if (claims == null) {
+        return _jsonErrorResponse(401, 'Not authenticated');
+      }
+
+      final userId = claims['sub'] as String?;
+      if (userId == null || userId.isEmpty) {
+        return _jsonErrorResponse(401, 'Invalid token claims');
+      }
+
+      final requester = await database.getUserById(userId);
+      if (requester == null) {
+        return _jsonErrorResponse(403, 'User not found');
+      }
+
+      if (requester.role != 'admin') {
+        return _jsonErrorResponse(403, 'Admin role required');
+      }
+
+      final users = await database.getAllUsers();
+      return Response.ok(
+        jsonEncode({
+          'success': true,
+          'data': users
+              .map((u) => {
+                    'id': u.id,
+                    'email': u.email,
+                    'role': u.role,
+                    'created_at': u.createdAt.toIso8601String(),
+                    'updated_at': u.updatedAt.toIso8601String(),
+                  })
+              .toList(),
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({'success': false, 'error': e.toString()}),
+      );
+    }
+  }
+
+  /// Handler: List collections
+  /// Admin sees all collections, regular users see their own.
+  Future<Response> _listCollectionsHandler(Request request) async {
+    try {
+      final claims = _claimsFromRequest(request);
+      if (claims == null) {
+        return _jsonErrorResponse(401, 'Not authenticated');
+      }
+
+      final userId = claims['sub'] as String?;
+      if (userId == null || userId.isEmpty) {
+        return _jsonErrorResponse(401, 'Invalid token claims');
+      }
+
+      final requester = await database.getUserById(userId);
+      if (requester == null) {
+        return _jsonErrorResponse(403, 'User not found');
+      }
+
+      final collections = requester.role == 'admin'
+          ? await database.getAllCollections()
+          : await database.getUserCollections(userId);
+
+      return Response.ok(
+        jsonEncode({
+          'success': true,
+          'data': collections
+              .map((c) => {
+                    'id': c.id,
+                    'owner_id': c.ownerId,
+                    'name': c.name,
+                    'rules': c.rules,
+                    'created_at': c.createdAt.toIso8601String(),
+                    'updated_at': c.updatedAt.toIso8601String(),
+                  })
+              .toList(),
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({'success': false, 'error': e.toString()}),
+      );
+    }
+  }
+
+  /// Handler: Create collection
+  Future<Response> _createCollectionHandler(Request request) async {
+    try {
+      final claims = _claimsFromRequest(request);
+      if (claims == null) {
+        return _jsonErrorResponse(401, 'Not authenticated');
+      }
+
+      final userId = claims['sub'] as String?;
+      if (userId == null || userId.isEmpty) {
+        return _jsonErrorResponse(401, 'Invalid token claims');
+      }
+
+      final requester = await database.getUserById(userId);
+      if (requester == null) {
+        return _jsonErrorResponse(403, 'User not found');
+      }
+
+      final body = await request.readAsString();
+      final data = body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(body) as Map<String, dynamic>;
+      final name = data['name'] as String?;
+
+      if (name == null || name.trim().isEmpty) {
+        return _jsonErrorResponse(400, 'Collection name required');
+      }
+
+      final rules = data['rules'] is Map<String, dynamic>
+          ? data['rules'] as Map<String, dynamic>
+          : null;
+
+      final created = await database.createCollection(
+        Collection(
+          ownerId: userId,
+          name: name.trim(),
+          rules: rules,
+        ),
+      );
+
+      return Response(
+        201,
+        body: jsonEncode({
+          'success': true,
+          'data': {
+            'id': created.id,
+            'owner_id': created.ownerId,
+            'name': created.name,
+            'rules': created.rules,
+            'created_at': created.createdAt.toIso8601String(),
+            'updated_at': created.updatedAt.toIso8601String(),
+          },
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({'success': false, 'error': e.toString()}),
+      );
+    }
   }
 
   /// Handler: Read document
