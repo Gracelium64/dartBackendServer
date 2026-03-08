@@ -6,6 +6,7 @@
 
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
+import 'package:archive/archive.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import '../config.dart';
@@ -32,7 +33,7 @@ class EmailService {
         return false;
       }
 
-      // Create archive of logs (TODO: implement actual compression)
+      // Create archive of logs
       final archivePath = await _createLogArchive(logFiles);
 
       // Send email via Gmail SMTP
@@ -119,17 +120,38 @@ class EmailService {
 
   /// Create a compressed archive of log files
   static Future<String> _createLogArchive(List<File> files) async {
-    // TODO: Implement actual tar.gz compression
-    // For now, just write logs to a directory
-
     final timestamp = DateTime.now().toIso8601String().substring(0, 10);
     final archivePath = path.join(
       globalConfig.logFilePath,
       'shadow_app_logs_$timestamp.tar.gz',
     );
 
-    print('[EMAIL] Archive would be created at: $archivePath');
+    print('[EMAIL] Creating archive at: $archivePath');
 
+    // Create a tar archive
+    final archive = Archive();
+
+    for (final file in files) {
+      final bytes = await file.readAsBytes();
+      final archiveFile = ArchiveFile(
+        path.basename(file.path),
+        bytes.length,
+        bytes,
+      );
+      archive.addFile(archiveFile);
+    }
+
+    // Encode as tar
+    final tarBytes = TarEncoder().encode(archive);
+    
+    // Compress with gzip
+    final gzipBytes = GZipEncoder().encode(tarBytes);
+
+    // Write to file
+    final archiveFile = File(archivePath);
+    await archiveFile.writeAsBytes(gzipBytes!);
+
+    print('[EMAIL] Archive created: ${archiveFile.path} (${gzipBytes.length} bytes)');
     return archivePath;
   }
 
@@ -193,7 +215,8 @@ class EmailService {
     // Schedule the email send
     Future.delayed(delayUntilNextRun, () async {
       await sendMonthlyLogReport(adminEmail);
-      // Reschedule for next month
+      // Reschedule for next month (fire and forget)
+      // ignore: unawaited_futures
       scheduleMonthlyReport(adminEmail);
     });
   }

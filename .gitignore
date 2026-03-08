@@ -1,0 +1,76 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+pubspec.lock
+*.dart.js
+*.js_
+*.js.deps
+*.js.map
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Database files (runtime data, not source)
+*.db
+*.db-wal
+*.db-shm
+data/*.db*
+bin/data/*.db*
+
+# Test databases
+test_*.db
+test_*.db-*
+
+# Logs
+logs/
+*.log
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Temp files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# React SDK
+react_sdk/node_modules/
+react_sdk/dist/
+react_sdk/build/
+react_sdk/.npm/
+react_sdk/package-lock.json
+
+# Flutter SDK
+flutter_sdk/.dart_tool/
+flutter_sdk/build/
+flutter_sdk/.flutter-plugins
+flutter_sdk/.flutter-plugins-dependencies
+
+# Admin GUI
+admin_gui/.dart_tool/
+admin_gui/build/
+admin_gui/.flutter-plugins
+admin_gui/.flutter-plugins-dependencies

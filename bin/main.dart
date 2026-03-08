@@ -1,138 +1,137 @@
-// bin/main.dart
-// Main CLI entrypoint for Shadow App Backend
-// Supports three modes: server, log-tail, admin
-// Explanation for Flutter Developers:
-// This is like the main() entry point in a Flutter app, but for a backend server.
-// It handles different commands (like Android intents or deep links) to run different
-// parts of the application.
+/// bin/main.dart
+///
+/// ╔════════════════════════════════════════════════════════════════════════════╗
+/// ║               Shadow App Backend - CLI Entry Point                         ║
+/// ║                                                                            ║
+/// ║  A transparent, educational backend server written entirely in Dart       ║
+/// ║  for Flutter developers to learn backend development.                    ║
+/// ╚════════════════════════════════════════════════════════════════════════════╝
+///
+/// OVERVIEW:
+/// This CLI provides three main commands for backend development and operations:
+///
+/// 1. SERVER MODE
+///    Start the HTTP server that handles API requests from clients.
+///    Example: dart bin/main.dart server --host 0.0.0.0 --port 8080
+///
+/// 2. LOG-TAIL MODE
+///    Monitor live audit logs of database operations in real-time.
+///    Similar to Unix 'tail -f' command.
+///    Example: dart bin/main.dart log-tail --follow
+///
+/// 3. ADMIN MODE
+///    Interactive console for database management and operations.
+///    Example: dart bin/main.dart admin --db-path data/shadow_app.db
+///
+/// MODULAR ARCHITECTURE:
+/// Each command is implemented in separate modules to maintain clean separation
+/// of concerns and improve maintainability. See bin/commands/ directory.
 
 import 'package:args/args.dart';
-import 'package:ansicolor/ansicolor.dart';
 import 'dart:io';
 import 'dart:async';
+import 'package:shadow_app_backend/server.dart' as server;
 
+<<<<<<< HEAD
+// Import command and configuration modules
+import 'commands/cli_config.dart';
+import 'commands/server_command.dart';
+import 'commands/log_tail_command.dart';
+import 'commands/admin_command.dart';
+import 'helpers/terminal_ui.dart';
+=======
 /// ASCII art and UI utilities for styled terminal output
 class TerminalUI {
   static final _pen = AnsiPen()..blue();
   static final _penGreen = AnsiPen()..green();
   static final _penRed = AnsiPen()..red();
   static final _penYellow = AnsiPen()..yellow();
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
 
-  static void printBanner() {
-    print('''
-╔════════════════════════════════════════════════════════════════════════════════╗
-║                                                                                ║
-║                    🚀 Shadow App Backend Server v0.1.0 🚀                     ║
-║                                                                                ║
-║                    A Dart Learning Backend for Flutter Developers              ║
-║                                                                                ║
-╚════════════════════════════════════════════════════════════════════════════════╝
-    ''');
-  }
+/// Application version
+const String appVersion = '0.1.0';
 
-  static void printHeader(String text) {
-    print('\n${_pen(text)}');
-    print(_pen('═' * text.length));
-  }
-
-  static void printSuccess(String text) {
-    print('${_penGreen('✓')} $text');
-  }
-
-  static void printError(String text) {
-    print('${_penRed('✗')} $text');
-  }
-
-  static void printWarning(String text) {
-    print('${_penYellow('⚠')} $text');
-  }
-
-  static void printTable(List<String> headers, List<List<String>> rows) {
-    // Simple ASCII table printer
-    // Calculate column widths
-    final widths = <int>[];
-    for (int i = 0; i < headers.length; i++) {
-      widths.add(headers[i].length);
-      for (final row in rows) {
-        if (i < row.length) {
-          widths[i] = widths[i] > row[i].length ? widths[i] : row[i].length;
-        }
-      }
-    }
-
-    // Print header
-    final headerLine = headers
-        .asMap()
-        .entries
-        .map((e) => e.value.padRight(widths[e.key]))
-        .join(' │ ');
-    print('┌─${headerLine.replaceAll(' │ ', '─┬─')}─┐');
-    print('│ $headerLine │');
-    print('├─${headerLine.replaceAll(' │ ', '─┼─')}─┤');
-
-    // Print rows
-    for (final row in rows) {
-      final rowLine = row
-          .asMap()
-          .entries
-          .map((e) => (e.value).padRight(widths[e.key]))
-          .join(' │ ');
-      print('│ $rowLine │');
-    }
-
-    print('└─${headerLine.replaceAll(' │ ', '─┴─')}─┘');
-  }
-}
-
-/// Main entry point
+/// Main entry point for the Shadow App Backend CLI
+///
+/// This function maintains a clean, readable structure by delegating to
+/// separate command modules rather than implementing everything inline.
+/// Each command has its own parser configuration and handler function.
 Future<void> main(List<String> args) async {
-  // Print banner
+  // Print banner for visual feedback
   TerminalUI.printBanner();
 
-  // Define CLI arguments parser
+  // Create the main argument parser - each command defines its own options
   final parser = ArgParser()
-    ..addCommand('server', _serverCommand())
-    ..addCommand('log-tail', _logTailCommand())
-    ..addCommand('admin', _adminCommand())
-    ..addFlag('help', negatable: false, help: 'Show this help message')
-    ..addFlag('version', negatable: false, help: 'Show version');
+    ..addCommand('server', serverCommandParser())
+    ..addCommand('log-tail', logTailCommandParser())
+    ..addCommand('admin', adminCommandParser())
+    ..addFlag(
+      'help',
+      abbr: 'h',
+      negatable: false,
+      help: 'Show help message',
+    )
+    ..addFlag(
+      'version',
+      abbr: 'v',
+      negatable: false,
+      help: 'Show version',
+    );
 
   try {
+    // Parse provided arguments
     final results = parser.parse(args);
 
+    // Handle global flags
     if (results['help'] as bool) {
       _printUsage(parser);
       return;
     }
 
     if (results['version'] as bool) {
-      print('Shadow App Backend v0.1.0');
+      print('Shadow App Backend v$appVersion');
       return;
     }
 
+    // Get the command (if any)
     final command = results.command;
     if (command == null) {
       _printUsage(parser);
       return;
     }
 
+    // Dispatch to the appropriate command handler
     switch (command.name) {
       case 'server':
-        await _runServer(command);
+        await runServerCommand(command);
         break;
       case 'log-tail':
-        await _runLogTail(command);
+        await runLogTailCommand(command);
         break;
       case 'admin':
-        await _runAdmin(command);
+        await runAdminCommand(command);
         break;
+      default:
+        TerminalUI.printError('Unknown command: ${command.name}');
+        _printUsage(parser);
+        exit(1);
     }
+  } on FormatException catch (e) {
+    // Handle argument parsing errors
+    TerminalUI.printError('Invalid arguments: ${e.message}');
+    exit(1);
   } catch (e) {
-    TerminalUI.printError('Error: $e');
+    // Handle unexpected errors
+    TerminalUI.printError('Unexpected error: $e');
     exit(1);
   }
 }
 
+<<<<<<< HEAD
+/// Print usage information
+void _printUsage(ArgParser parser) {
+  print(usageInfo(parser));
+=======
 /// Define server command arguments
 ArgParser _serverCommand() {
   return ArgParser()
@@ -206,17 +205,13 @@ Future<void> _runServer(ArgResults results) async {
   print('  Database: $dbPath');
   print('  Log Level: $logLevel');
 
-  TerminalUI.printSuccess('Database initialized at $dbPath');
-  TerminalUI.printSuccess('Listening on http://$host:$port');
-
-  // TODO: Implement actual server initialization
-  // For now, show placeholder
-  print('\n[PLACEHOLDER] Server would start here');
-  print('[PLACEHOLDER] HTTP endpoints would be registered');
-  print('[PLACEHOLDER] Press Ctrl+C to stop server');
-
-  // Keep server running
-  await Future.delayed(Duration(days: 365));
+  // Start the actual server
+  try {
+    await server.runServer(host, port);
+  } catch (e) {
+    TerminalUI.printError('Failed to start server: $e');
+    exit(1);
+  }
 }
 
 /// Run log-tail mode
@@ -224,7 +219,7 @@ Future<void> _runLogTail(ArgResults results) async {
   TerminalUI.printHeader('Live Action Log - Shadow App Backend');
 
   final lines = int.parse(results['lines'] as String);
-  final follow = results['flag']('follow') as bool? ?? false;
+  final follow = results['follow'] as bool? ?? false;
 
   print(
       '''\nDisplaying recent $lines log entries${follow ? ' (following new entries...)' : ''}
@@ -384,4 +379,5 @@ void _adminMenuReports() {
   print('Enter choice (1-3): ');
   stdin.readLineSync();
   print('[PLACEHOLDER] Report generator would go here');
+>>>>>>> 745f19928406396794f44412fae890877fe1f158
 }

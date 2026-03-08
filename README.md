@@ -19,10 +19,11 @@ Build a backend server written **entirely in Dart** that teaches you backend dev
 
 - **Authentication**: Signup, login, JWT tokens, token refresh with password hashing
 - **Database**: SQLite with CRUD operations on documents in collections
+- **Advanced Querying**: Admin SQL query blocks (read + write/destructive, up to 5 statements)
 - **Media Storage**: Upload, compress, and store images/videos directly in database
 - **Access Control**: Per-collection permission rules (read/write/public)
-- **Live Logging**: Real-time audit trail of all database actions
-- **Admin Console**: Full database management terminal UI
+- **Live Logging**: Real-time audit trail of all database actions with log-tail feature
+- **CLI Admin Console**: Full database management via interactive terminal interface
 - **Flutter SDK**: Simple, intuitive package for your Flutter apps
 - **Gmail Integration**: Monthly log reports sent automatically to admin email
 - **Production Ready**: Designed to scale from local dev to cloud deployment
@@ -42,7 +43,7 @@ dart bin/main.dart server --port 8080
 dart bin/main.dart log-tail --follow
 
 # 4. Admin console (third terminal)
-dart bin/main.dart admin --admin-key <key-from-startup>
+dart bin/main.dart admin
 ```
 
 **See**: [Operator Manual](docs/OPERATOR_MANUAL.md)
@@ -75,12 +76,18 @@ await ShadowApp.collection('notes').delete(doc.id);
 
 ## 📖 Complete Documentation
 
-| File | For | Contains |
-|------|-----|----------|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Developers | System design, data models, database schema, API contract |
-| [OPERATOR_MANUAL.md](docs/OPERATOR_MANUAL.md) | Operators | Setup, running, monitoring, troubleshooting |
-| [FLUTTER_SDK_GUIDE.md](docs/FLUTTER_SDK_GUIDE.md) | Flutter Devs | SDK usage, examples, learning notes |
-| [MAINTENANCE_SCALING_GUIDE.md](docs/MAINTENANCE_SCALING_GUIDE.md) | DevOps | Backup, scaling, deployment strategies |
+| File                                                              | For          | Contains                                                                               |
+| ----------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------- |
+| [SDK_GUIDE.md](docs/SDK_GUIDE.md)                                 | All Users    | **Multi-SDK integration guide**: Dart/Flutter, CLI, REST API, cURL, JavaScript, Python |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md)                           | Developers   | System design, data models, database schema, API contract                              |
+| [OPERATOR_MANUAL.md](docs/OPERATOR_MANUAL.md)                     | Operators    | Setup, running, monitoring, troubleshooting                                            |
+| [FLUTTER_SDK_GUIDE.md](docs/FLUTTER_SDK_GUIDE.md)                 | Flutter Devs | SDK usage, examples, learning notes                                                    |
+| [MAINTENANCE_SCALING_GUIDE.md](docs/MAINTENANCE_SCALING_GUIDE.md) | DevOps       | Backup, scaling, deployment strategies                                                 |
+
+### Remote Access Tools
+
+- **CLI Client**: Command-line tool for remote server access ([cli_client/README.md](cli_client/README.md))
+- **REST API**: Direct HTTP endpoints for any language ([see SDK_GUIDE.md](docs/SDK_GUIDE.md#rest-api))
 
 ## 🏗️ Project Structure
 
@@ -168,11 +175,66 @@ GET    /api/collections/{id}/documents/{docId}  # Read document
 PUT    /api/collections/{id}/documents/{docId}  # Update document
 DELETE /api/collections/{id}/documents/{docId}  # Delete document
 GET    /api/collections/{id}/documents          # List documents
+POST   /api/admin/sql-query                     # Admin SQL query block (up to 5 statements)
 
 POST   /api/media/upload                         # Upload media
 GET    /api/media/download/{mediaId}            # Download media
 
 GET    /health                                   # Health check
+```
+
+### SQL-like Query Examples
+
+```bash
+# Remote client (admin login required)
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT id, owner_id FROM documents LIMIT 10"
+
+# Filter by owner/user
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT id, owner_id FROM documents WHERE owner_id = ? LIMIT 10" \
+  --sql-params '["user123"]'
+
+# Destructive/write SQL (admin only)
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "UPDATE users SET role='admin' WHERE email='ops@example.com'"
+
+# Multi-statement SQL (max 5 statements)
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5"
+
+# Row cap override for current client run/session
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT * FROM documents" \
+  --sql-cap 1000
+
+dart cli_client/bin/client.dart \
+  --server http://localhost:8080 \
+  --email admin@example.com \
+  --password pass \
+  --login \
+  --sql "SELECT * FROM documents" \
+  --sql-cap-off
 ```
 
 ## 🧪 Testing
@@ -195,17 +257,20 @@ Every file contains extensive **inline code comments** explaining how things wor
 ## 🌐 Deployment
 
 ### Local Dev
+
 - SQLite (file-based)
 - Run on localhost:8080
 - Everything self-contained
 
 ### Production (Small)
+
 - Single Ubuntu server
 - SQLite + WAL mode
 - Gmail for log reports
 - Monitor with log-tail
 
 ### Production (Large)
+
 - PostgreSQL cluster
 - Multiple server instances
 - Redis caching

@@ -7,29 +7,36 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 import 'crud_service.dart';
 import 'media_service.dart';
+import 'admin_service.dart';
 
 /// Main ShadowApp class - your gateway to the backend
-/// 
+///
 /// Usage:
 /// ```dart
 /// // Initialize once in main()
 /// await ShadowApp.initialize(serverUrl: 'http://192.168.1.100:8080');
-/// 
+///
 /// // Login
 /// await ShadowApp.auth.login('user@example.com', 'password');
-/// 
+///
 /// // Use collections
 /// final doc = await ShadowApp.collection('notes').create({'title': 'My Note'});
+///
+/// // Admin SQL (admin users only)
+/// final result = await ShadowApp.adminSql.execute(
+///   "SELECT id, owner_id FROM documents LIMIT 10",
+/// );
 /// ```
 class ShadowApp {
   static final ShadowApp _instance = ShadowApp._internal();
-  
+
   late String _serverUrl;
   late SharedPreferences _prefs;
-  
+
   // Public services
   late AuthService _authService;
   late MediaService _mediaService;
+  late AdminSqlService _adminSqlService;
 
   factory ShadowApp() {
     return _instance;
@@ -52,6 +59,10 @@ class ShadowApp {
       serverUrl: serverUrl,
       prefs: _instance._prefs,
     );
+    _instance._adminSqlService = AdminSqlService(
+      serverUrl: serverUrl,
+      prefs: _instance._prefs,
+    );
   }
 
   /// Access auth methods (login, signup, logout, etc.)
@@ -59,6 +70,9 @@ class ShadowApp {
 
   /// Access media methods (upload, download)
   static MediaService get media => _instance._mediaService;
+
+  /// Access admin SQL methods (admin-only advanced operations)
+  static AdminSqlService get adminSql => _instance._adminSqlService;
 
   /// Get or create a collection reference
   static CrudService collection(String collectionId) {
