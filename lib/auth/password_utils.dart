@@ -29,13 +29,12 @@ class PasswordUtils {
       if (parts.length != 2) return false;
 
       final salt = parts[0];
-      final storedHash = parts[1];
 
       // Compute hash with same salt
       final computedHash = hashWithSalt(password, salt);
 
       // Constant-time comparison to prevent timing attacks
-      return _constantTimeEqual(computedHash, storedHash);
+      return _constantTimeEqual(computedHash, hash);
     } catch (e) {
       print('[AUTH ERROR] Password verification failed: $e');
       return false;

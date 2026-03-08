@@ -172,28 +172,34 @@ void main() {
     test('should create media blob with required fields', () {
       final media = MediaBlob(
         id: 'media-1',
-        uploaderId: 'user-1',
-        filename: 'image.jpg',
+        documentId: 'doc-1',
+        fileName: 'image.jpg',
         mimeType: 'image/jpeg',
-        size: 1024,
+        originalSize: 1024,
+        compressedSize: 768,
+        compressionAlgo: 'gzip',
         blobData: [1, 2, 3, 4, 5],
       );
 
       expect(media.id, equals('media-1'));
-      expect(media.uploaderId, equals('user-1'));
-      expect(media.filename, equals('image.jpg'));
+      expect(media.documentId, equals('doc-1'));
+      expect(media.fileName, equals('image.jpg'));
       expect(media.mimeType, equals('image/jpeg'));
-      expect(media.size, equals(1024));
+      expect(media.originalSize, equals(1024));
+      expect(media.compressedSize, equals(768));
+      expect(media.compressionAlgo, equals('gzip'));
       expect(media.blobData, equals([1, 2, 3, 4, 5]));
-      expect(media.uploadedAt, isA<DateTime>());
+      expect(media.createdAt, isA<DateTime>());
     });
 
     test('should generate ID if not provided', () {
       final media = MediaBlob(
-        uploaderId: 'user-1',
-        filename: 'test.pdf',
+        documentId: 'doc-1',
+        fileName: 'test.pdf',
         mimeType: 'application/pdf',
-        size: 2048,
+        originalSize: 2048,
+        compressedSize: 1024,
+        compressionAlgo: 'brotli',
         blobData: [],
       );
 
@@ -212,10 +218,12 @@ void main() {
 
       for (final type in types) {
         final media = MediaBlob(
-          uploaderId: 'user-1',
-          filename: 'file',
+          documentId: 'doc-1',
+          fileName: 'file',
           mimeType: type,
-          size: 100,
+          originalSize: 100,
+          compressedSize: 80,
+          compressionAlgo: 'gzip',
           blobData: [],
         );
 

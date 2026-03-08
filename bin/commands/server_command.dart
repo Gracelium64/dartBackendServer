@@ -6,7 +6,6 @@
 
 import 'package:args/args.dart';
 import 'package:shadow_app_backend/server.dart' as server;
-import 'package:shadow_app_backend/config.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:path/path.dart' as path;

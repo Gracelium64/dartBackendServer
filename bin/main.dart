@@ -30,7 +30,6 @@
 import 'package:args/args.dart';
 import 'dart:io';
 import 'dart:async';
-import 'package:shadow_app_backend/server.dart' as server;
 
 // Import command and configuration modules
 import 'commands/cli_config.dart';

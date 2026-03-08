@@ -47,8 +47,7 @@ void main() {
 
       expect(result['success'], isTrue);
       expect(result['user'], isNotNull);
-      expect(result['accessToken'], isNotNull);
-      expect(result['refreshToken'], isNotNull);
+      expect(result['token'], isNotNull);
 
       final user = result['user'] as Map<String, dynamic>;
       expect(user['email'], equals('test@example.com'));
@@ -74,8 +73,7 @@ void main() {
 
       expect(result['success'], isTrue);
       expect(result['user'], isNotNull);
-      expect(result['accessToken'], isNotNull);
-      expect(result['refreshToken'], isNotNull);
+      expect(result['token'], isNotNull);
     });
 
     test('should reject invalid login credentials', () async {
@@ -99,7 +97,7 @@ void main() {
     test('should validate JWT tokens', () async {
       final signupResult =
           await AuthService.signup('test@example.com', 'password123');
-      final accessToken = signupResult['accessToken'] as String;
+      final accessToken = signupResult['token'] as String;
 
       final claims = AuthService.validateToken(accessToken);
 
@@ -109,20 +107,20 @@ void main() {
     });
 
     test('should reject invalid JWT tokens', () {
-      expect(() => AuthService.validateToken('invalid.token.here'),
-          throwsA(anything));
+      final claims = AuthService.validateToken('invalid.token.here');
+      expect(claims, isNull);
     });
 
     test('should allow token refresh', () async {
       final signupResult =
           await AuthService.signup('test@example.com', 'password123');
-      final refreshToken = signupResult['refreshToken'] as String;
+      final refreshToken = signupResult['token'] as String;
 
-      final result = await AuthService.refreshAccessToken(refreshToken);
+      final result = await AuthService.refreshToken(refreshToken);
 
       expect(result['success'], isTrue);
-      expect(result['accessToken'], isNotNull);
-      expect(result['accessToken'], isNot(equals(signupResult['accessToken'])));
+      expect(result['token'], isNotNull);
+      expect(result['token'], isNot(equals(signupResult['token'])));
     });
 
     test('should persist user in database after signup', () async {

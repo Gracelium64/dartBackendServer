@@ -153,6 +153,8 @@ class AuthService {
       'email': email,
       'iat': (now.millisecondsSinceEpoch / 1000).toInt(), // issued at
       'exp': (exp.millisecondsSinceEpoch / 1000).toInt(), // expiration
+      // Make tokens unique even when generated in the same second.
+      'jti': now.microsecondsSinceEpoch.toString(),
     };
 
     // Encode header and payload

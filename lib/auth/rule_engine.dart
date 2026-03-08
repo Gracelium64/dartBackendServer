@@ -10,6 +10,11 @@ import '../database/models.dart';
 /// Rule engine for access control
 /// Evaluates read/write permissions on collections
 class RuleEngine {
+  static List<String> _asStringList(dynamic value) {
+    if (value is! List) return const <String>[];
+    return value.whereType<String>().toList();
+  }
+
   /// Check if user can read from a collection
   static bool canRead(String userId, String userRole, Collection collection) {
     // Admin can read everything
@@ -22,8 +27,11 @@ class RuleEngine {
     if (collection.ownerId == userId) return true;
 
     // Check if user's role is in read list
-    final readRoles = collection.rules['read'] as List? ?? [];
+    final readRoles = _asStringList(collection.rules['read']);
     if (readRoles.contains(userRole)) return true;
+
+    // Any non-empty user identity can satisfy authenticated access.
+    if (readRoles.contains('authenticated') && userId.isNotEmpty) return true;
 
     // Check if user is specifically allowed (if rules contain user ID)
     if (readRoles.contains(userId)) return true;
@@ -40,8 +48,11 @@ class RuleEngine {
     if (collection.ownerId == userId) return true;
 
     // Check if user's role is in write list
-    final writeRoles = collection.rules['write'] as List? ?? [];
+    final writeRoles = _asStringList(collection.rules['write']);
     if (writeRoles.contains(userRole)) return true;
+
+    // Any non-empty user identity can satisfy authenticated access.
+    if (writeRoles.contains('authenticated') && userId.isNotEmpty) return true;
 
     // Check if user is specifically allowed (if rules contain user ID)
     if (writeRoles.contains(userId)) return true;

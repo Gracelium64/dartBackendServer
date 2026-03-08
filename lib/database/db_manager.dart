@@ -21,12 +21,6 @@ extension RowToMap on Row {
   }
 }
 
-extension RowToMap on Row {
-  Map<String, Object?> toMap() {
-    return Map<String, Object?>.from(this);
-  }
-}
-
 /// Main database manager class
 /// Handles all database connections, queries, and transactions
 class DatabaseManager {
@@ -69,6 +63,9 @@ class DatabaseManager {
     // Create schema if new database
     SchemaMigration.createTables(_db);
     SchemaMigration.runMigrations(_db);
+
+    // Keep the global DB handle in sync for services that use it directly.
+    database = this;
 
     print('[DB] Database initialized successfully');
   }
@@ -829,11 +826,20 @@ class DatabaseManager {
       final mediaCount =
           _db.select('SELECT COUNT(*) as count FROM media_blobs');
 
+      final users = userCount.first.toMap()['count'];
+      final collections = collectionCount.first.toMap()['count'];
+      final documents = documentCount.first.toMap()['count'];
+      final mediaBlobs = mediaCount.first.toMap()['count'];
+
       return {
-        'users': userCount.first.toMap()['count'],
-        'collections': collectionCount.first.toMap()['count'],
-        'documents': documentCount.first.toMap()['count'],
-        'media_blobs': mediaCount.first.toMap()['count'],
+        'users': users,
+        'collections': collections,
+        'documents': documents,
+        'media_blobs': mediaBlobs,
+        'user_count': users,
+        'collection_count': collections,
+        'document_count': documents,
+        'media_blob_count': mediaBlobs,
       };
     } catch (e) {
       print('[DB ERROR] Failed to get database stats: $e');

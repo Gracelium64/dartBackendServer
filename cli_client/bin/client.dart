@@ -8,6 +8,8 @@
 //   dart bin/client.dart --server http://192.168.1.100:8080 --email user@ex.com --password pass --login
 //
 
+// ignore_for_file: unnecessary_string_escapes
+
 import 'dart:io';
 import 'dart:convert';
 import 'dart:async';

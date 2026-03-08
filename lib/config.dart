@@ -24,6 +24,11 @@ class ServerConfig {
   late bool enableCors;
   late bool enableWal;
 
+  ServerConfig() {
+    _loadDefaults();
+    _normalizePaths();
+  }
+
   /// Load configuration from environment or config file
   Future<void> load() async {
     // Try to load from config.yaml first

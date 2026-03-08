@@ -21,6 +21,14 @@ String formatDateTime(DateTime dt) {
 
 /// Truncate string to max length with ellipsis
 String truncate(String text, int maxLength) {
-  if (text.length <= maxLength) return text;
-  return '${text.substring(0, maxLength - 3)}...';
+  if (maxLength <= 0) return '';
+
+  final chars = text.runes.toList();
+  if (chars.length <= maxLength) return text;
+
+  // No useful content can be shown if we only have space for ellipsis.
+  if (maxLength <= 3) return '';
+
+  final keep = chars.take(maxLength - 3);
+  return '${String.fromCharCodes(keep)}...';
 }
