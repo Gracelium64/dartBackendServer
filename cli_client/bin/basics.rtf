@@ -7,4 +7,15 @@
 
 \f0\fs24 \cf0 dart client.dart  --server http://192.168.0.102:8080  --email admin@admin.admin  --password 123456789  --login\
 \
-dart client.dart  --server http://192.168.0.102:8080  --}
+dart client.dart  --server http://192.168.0.102:8080  --\
+\
+\
+\
+\
+cd /home/grace64/ShadowAppTesting/dartBackendServer\
+\
+dart bin/main.dart server --host 0.0.0.0 --port 8080 --db-path /home/grace64/ShadowAppTesting/dartBackendServer/data/shadow_app.db\
+\
+dart bin/main.dart admin --db-path /home/grace64/ShadowAppTesting/dartBackendServer/data/shadow_app.db\
+\
+dart bin/main.dart log-tail --follow --lines 50 --db-path /home/grace64/ShadowAppTesting/dartBackendServer/data/shadow_app.db}
