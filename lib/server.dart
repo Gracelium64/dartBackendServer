@@ -317,6 +317,13 @@ Press Ctrl+C to stop the server gracefully.
         );
       }
 
+      final userPayload = result['user'] as Map<String, dynamic>?;
+      final userId = userPayload?['id'] as String?;
+      final grantedToken = result['token'] as String?;
+      if (userId != null && userId.isNotEmpty && grantedToken != null) {
+        await _logSessionAuthorization(userId, grantedToken, source: 'login');
+      }
+
       return Response.ok(
         jsonEncode({
           'success': true,
@@ -362,6 +369,19 @@ Press Ctrl+C to stop the server gracefully.
         );
       }
 
+      final refreshedToken = result['token'] as String?;
+      if (refreshedToken != null && refreshedToken.isNotEmpty) {
+        final claims = AuthService.validateToken(refreshedToken);
+        final userId = claims?['sub'] as String?;
+        if (userId != null && userId.isNotEmpty) {
+          await _logSessionAuthorization(
+            userId,
+            refreshedToken,
+            source: 'refresh',
+          );
+        }
+      }
+
       return Response.ok(
         jsonEncode({
           'success': true,
@@ -374,6 +394,28 @@ Press Ctrl+C to stop the server gracefully.
       return Response.internalServerError(
         body: jsonEncode({'success': false, 'error': e.toString()}),
       );
+    }
+  }
+
+  Future<void> _logSessionAuthorization(
+    String userId,
+    String token, {
+    required String source,
+  }) async {
+    try {
+      await database.logAction(
+        AuditLog(
+          userId: userId,
+          action: 'SESSION_AUTHORIZED',
+          resourceType: 'auth_session',
+          resourceId: source,
+          status: 'success',
+          details: 'token=$token',
+        ),
+      );
+    } catch (e) {
+      // Authentication flow must continue even if audit persistence fails.
+      print('[AUTH LOG ERROR] Failed to persist session token audit log: $e');
     }
   }
 

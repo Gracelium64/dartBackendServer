@@ -24,6 +24,7 @@ class ServerLogger {
   late List<AuditLog> _recentLogs;
   static const int _maxRecentLogs = 1000; // Keep last 1000 in memory
   bool _isInitialized = false;
+  Future<void> _writeQueue = Future.value();
 
   factory ServerLogger() {
     return _instance;
@@ -81,16 +82,19 @@ class ServerLogger {
         _recentLogs.removeAt(0);
       }
 
-      // Write to file
-      final logEntry = _formatLogEntry(action);
-      _logSink.writeln(logEntry);
-      // Ensure tail readers can see the entry immediately.
-      await _logSink.flush();
+      // Serialize writes to avoid IOSink state races under concurrent logging.
+      _writeQueue = _writeQueue.then((_) async {
+        final logEntry = _formatLogEntry(action);
+        _logSink.writeln(logEntry);
+        // Ensure tail readers can see the entry immediately.
+        await _logSink.flush();
+        // Check if we need to rotate log file (midnight)
+        await _checkLogRotation();
+      });
 
-      // Check if we need to rotate log file (midnight)
-      _checkLogRotation();
+      await _writeQueue;
     } catch (e) {
-      print('[LOG ERROR] Failed to log action: $e');
+      stderr.writeln('[LOG ERROR] Failed to log action: $e');
     }
   }
 
@@ -107,6 +111,12 @@ class ServerLogger {
 
     final normalized = message.trimRight();
     if (normalized.isEmpty) {
+      return;
+    }
+
+    // Avoid recursive loops by skipping logger/system-generated lines.
+    if (normalized.startsWith('[LOG') ||
+        normalized.startsWith('Unhandled server zone error:')) {
       return;
     }
 
@@ -137,14 +147,14 @@ class ServerLogger {
   }
 
   /// Check if log file needs to be rotated
-  void _checkLogRotation() {
+  Future<void> _checkLogRotation() async {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final expectedPath =
         path.join(globalConfig.logFilePath, 'shadow_app_$today.log');
 
     if (_currentLogFile.path != expectedPath) {
       // Day has changed, rotate log file
-      _logSink.close();
+      await _logSink.close();
       _createTodayLogFile();
       print('[LOG] Log file rotated');
 

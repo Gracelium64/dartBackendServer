@@ -6,6 +6,7 @@
 // Usage:
 //   dart bin/client.dart --server http://localhost:8080 --auth-key admin_key --list-users
 //   dart bin/client.dart --server http://192.168.1.100:8080 --email user@ex.com --password pass --login
+//   dart bin/client.dart --server http://localhost:8080 --token "$SHADOW_TOKEN" --list-users
 //
 
 // ignore_for_file: unnecessary_string_escapes
@@ -430,8 +431,9 @@ EXAMPLES:
 
 Authentication (needed for most operations):
   dart bin/client.dart --server http://localhost:8080 --email user@example.com --password mypass --login
+  dart bin/client.dart --server http://localhost:8080 --token "\$SHADOW_TOKEN" --list-users
   
-  After login, the token is used for subsequent commands.
+  After login, the token is used for subsequent commands in the same run.
 
 With admin key (for admin-only operations):
   dart bin/client.dart --server http://localhost:8080 --admin-key secret_key [command]
@@ -472,6 +474,13 @@ Future<void> main(List<String> args) async {
       help:
           'Server URL (e.g., http://localhost:8080 or http://192.168.1.100:8080)',
       valueHelp: 'url',
+    )
+    ..addOption(
+      'token',
+      abbr: 't',
+      help:
+          'JWT token for authenticated requests (e.g., --token "\$SHADOW_TOKEN")',
+      valueHelp: 'jwt_token',
     )
     ..addOption(
       'email',
@@ -607,6 +616,11 @@ Future<void> main(List<String> args) async {
   // Set admin key if provided
   if (results['admin-key'] != null) {
     client.setAdminKey(results['admin-key'] as String);
+  }
+
+  // Set bearer token for authenticated requests
+  if (results['token'] != null) {
+    client.setToken(results['token'] as String);
   }
 
   // Handle login

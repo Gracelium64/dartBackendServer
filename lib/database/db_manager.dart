@@ -822,7 +822,7 @@ class DatabaseManager {
     try {
       final stmt = _db.prepare('''
         INSERT INTO audit_log 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''');
       stmt.execute([
         entry.id,
@@ -832,6 +832,7 @@ class DatabaseManager {
         entry.resourceId,
         entry.status,
         entry.errorMessage,
+        entry.details,
         entry.timestamp.millisecondsSinceEpoch,
       ]);
       stmt.dispose();

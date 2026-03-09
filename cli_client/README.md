@@ -11,9 +11,9 @@ A command-line tool for accessing your Shadow App Backend Server remotely from a
 - **Server URL** (e.g., `http://192.168.1.100:8080`)
 - **Credentials** (email/password or admin key)
 
-/*
+/_
 http://192.168.0.102:8080
-*/
+_/
 
 ### 2. Setup
 
@@ -46,11 +46,12 @@ dart bin/client.dart \
   --login
 ```
 
-**Note:** The token will be used for subsequent commands in the same session. For persistent authentication, save the token:
+**Note:** The token from `--login` is only used inside that same client run.
+For repeat commands, pass a token explicitly:
 
 ```bash
-TOKEN=$(dart bin/client.dart ... --login 2>&1 | grep "token:")
-# Use $TOKEN in subsequent requests
+export SHADOW_TOKEN="your_jwt_token"
+dart bin/client.dart --server http://192.168.1.100:8080 --token "$SHADOW_TOKEN" --list-users
 ```
 
 ## Commands
@@ -359,6 +360,7 @@ if __name__ == '__main__':
 | Option                | Short | Description             | Example                                                        |
 | --------------------- | ----- | ----------------------- | -------------------------------------------------------------- |
 | `--server`            | `-s`  | Server URL (required)   | `http://localhost:8080`                                        |
+| `--token`             | `-t`  | JWT bearer token        | `--token "$SHADOW_TOKEN"`                                      |
 | `--email`             | `-e`  | Email for login         | `user@example.com`                                             |
 | `--password`          | `-p`  | Password for login      | `mypass`                                                       |
 | `--admin-key`         | `-a`  | Admin key for admin ops | `secret_key`                                                   |

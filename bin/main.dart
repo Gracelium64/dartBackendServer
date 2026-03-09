@@ -94,6 +94,7 @@ Future<void> main(List<String> args) async {
     // Dispatch to the appropriate command handler
     switch (command.name) {
       case 'server':
+        var isMirroringTerminalLine = false;
         await runZonedGuarded(
           () async {
             await runServerCommand(command);
@@ -104,11 +105,26 @@ Future<void> main(List<String> args) async {
           zoneSpecification: ZoneSpecification(
             print: (self, parent, zone, line) {
               parent.print(zone, line);
+
+              if (isMirroringTerminalLine) {
+                return;
+              }
+
+              if (line.startsWith('[LOG') ||
+                  line.startsWith('Unhandled server zone error:')) {
+                return;
+              }
+
+              isMirroringTerminalLine = true;
               unawaited(
-                logger.logConsoleMessage(
+                logger
+                    .logConsoleMessage(
                   line,
                   source: 'server-terminal',
-                ),
+                )
+                    .whenComplete(() {
+                  isMirroringTerminalLine = false;
+                }),
               );
             },
           ),

@@ -83,6 +83,7 @@ class SchemaMigration {
         resource_id TEXT NOT NULL,
         status TEXT NOT NULL,
         error_message TEXT,
+        details TEXT,
         timestamp INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
@@ -134,16 +135,14 @@ class SchemaMigration {
   static void runMigrations(Database db) {
     print('[DB] Checking for pending migrations...');
 
-    // Example: Adding a new column to an existing table
-    // try {
-    //   db.execute('ALTER TABLE users ADD COLUMN last_login INTEGER');
-    //   print('  ✓ Migration: Added last_login to users');
-    // } catch (e) {
-    //   // Column already exists, that's fine
-    // }
+    // Add audit details column for richer security/event context.
+    try {
+      db.execute('ALTER TABLE audit_log ADD COLUMN details TEXT');
+      print('  ✓ Migration: Added details to audit_log');
+    } catch (_) {
+      // Column already exists, that's fine.
+    }
 
     print('[DB] All migrations completed');
   }
 }
-
-
