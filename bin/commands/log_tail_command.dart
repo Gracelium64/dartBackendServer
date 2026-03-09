@@ -6,7 +6,8 @@
 
 import 'package:args/args.dart';
 import 'package:shadow_app_backend/config.dart';
-import 'package:shadow_app_backend/logging/logger.dart';
+import 'package:shadow_app_backend/database/db_manager.dart';
+import 'package:shadow_app_backend/database/models.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:path/path.dart' as path;
@@ -29,16 +30,19 @@ Future<void> runLogTailCommand(ArgResults results) async {
   // Extract arguments
   final lines = int.parse(results['lines'] as String);
   final follow = results['follow'] as bool;
+  final dbPath = _resolveDbPath(results['db-path'] as String);
 
-  // Initialize logging system
+  // Initialize database connection (source of truth for audit events)
   try {
-    print('\n🔧 Initializing logging system...');
+    print('\n🔧 Initializing audit log reader...');
     globalConfig = ServerConfig();
     await globalConfig.load();
-    await logger.initialize();
-    TerminalUI.printSuccess('Logging initialized');
+    globalConfig.dbPath = dbPath;
+    database = DatabaseManager();
+    await database.initialize(dbPath);
+    TerminalUI.printSuccess('Audit log reader initialized');
   } catch (e) {
-    TerminalUI.printError('Failed to initialize logging: $e');
+    TerminalUI.printError('Failed to initialize audit log reader: $e');
     exit(1);
   }
 
@@ -46,25 +50,12 @@ Future<void> runLogTailCommand(ArgResults results) async {
     '\n📊 Displaying recent $lines log entries'
     '${follow ? ' (following new entries...)' : ''}\n',
   );
-
-  // Get most recent log file
-  final logFiles = await logger.getLogFiles();
-  if (logFiles.isEmpty) {
-    TerminalUI.printWarning('No log files found');
-    return;
-  }
-
-  final latestLogFile = logFiles.first;
-  print('📁 Reading: ${path.basename(latestLogFile.path)}\n');
+  print('📁 Database: $dbPath\n');
   print('─' * 120);
 
-  // Read and display last N lines
-  final allLines = await latestLogFile.readAsLines();
-  final startIndex = (allLines.length - lines).clamp(0, allLines.length);
-  final recentLines = allLines.sublist(startIndex);
-
-  for (final line in recentLines) {
-    _printLogLine(line);
+  final initialLogs = await database.getAuditLog(limit: lines);
+  for (final log in initialLogs.reversed) {
+    _printLogLine(_formatAuditLogLine(log));
   }
 
   // Follow mode - watch for new lines
@@ -72,34 +63,66 @@ Future<void> runLogTailCommand(ArgResults results) async {
     print('─' * 120);
     print('\n👀 Following new entries (press Ctrl+C to stop)\n');
 
-    var lastLineCount = allLines.length;
+    final seenIds = initialLogs.map((l) => l.id).toSet();
 
-    // Poll the file every second for new lines
+    // Poll audit table every second for new entries.
     while (true) {
       await Future.delayed(Duration(seconds: 1));
 
-      try {
-        final currentLines = await latestLogFile.readAsLines();
-        if (currentLines.length > lastLineCount) {
-          final newLines = currentLines.sublist(lastLineCount);
-          for (final line in newLines) {
-            _printLogLine(line);
-          }
-          lastLineCount = currentLines.length;
-        }
-      } catch (e) {
-        // File might be rotated, try to get new file
-        final updatedLogFiles = await logger.getLogFiles();
-        if (updatedLogFiles.isNotEmpty &&
-            updatedLogFiles.first.path != latestLogFile.path) {
-          print(
-            '\n🔄 Log file rotated to ${path.basename(updatedLogFiles.first.path)}\n',
-          );
-          break;
+      final latest = await database.getAuditLog(limit: 200);
+      final newLogs = latest.where((entry) => !seenIds.contains(entry.id));
+
+      for (final log in newLogs.toList().reversed) {
+        _printLogLine(_formatAuditLogLine(log));
+        seenIds.add(log.id);
+
+        // Cap memory usage in very long sessions.
+        if (seenIds.length > 5000) {
+          final keep = latest.map((e) => e.id).toSet();
+          seenIds
+            ..clear()
+            ..addAll(keep);
         }
       }
     }
   }
+
+  database.close();
+}
+
+String _formatAuditLogLine(AuditLog log) {
+  final details = log.details ?? '-';
+  final error = log.errorMessage ?? '-';
+  return [
+    log.timestamp.toIso8601String(),
+    log.userId,
+    log.action,
+    '${log.resourceType}:${log.resourceId}',
+    log.status,
+    error,
+    details,
+  ].join('\t');
+}
+
+String _resolveDbPath(String dbPath) {
+  if (path.isAbsolute(dbPath)) {
+    return path.normalize(dbPath);
+  }
+
+  if (Platform.isMacOS) {
+    final homeDir = Platform.environment['HOME'];
+    if (homeDir != null && homeDir.isNotEmpty) {
+      final baseDir = path.join(
+        homeDir,
+        'Library',
+        'Application Support',
+        'ShadowAppBackend',
+      );
+      return path.normalize(path.join(baseDir, dbPath));
+    }
+  }
+
+  return path.normalize(dbPath);
 }
 
 /// Print a log line with color coding based on status

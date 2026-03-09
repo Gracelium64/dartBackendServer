@@ -50,6 +50,11 @@ ArgParser logTailCommandParser() {
       defaultsTo: '50',
       help: 'Number of recent lines to display',
     )
+    ..addOption(
+      'db-path',
+      defaultsTo: 'data/shadow_app.db',
+      help: 'Path to SQLite database file (must match server db-path)',
+    )
     ..addFlag(
       'follow',
       help: 'Follow new log entries in real-time (like "tail -f")',
