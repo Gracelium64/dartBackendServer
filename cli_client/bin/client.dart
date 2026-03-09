@@ -159,8 +159,10 @@ class ShadowAppClient {
         final collections = (payload['data'] as List?) ?? const [];
         print('\n📁 Collections (${collections.length}):');
         for (final col in collections) {
+          final id = col['id'] as String;
+          final ownerId = col['owner_id'] as String;
           print(
-              '  - ${col['name']} (${col['id'].substring(0, 8)}) owner: ${col['owner_id'].substring(0, 8)}');
+              '  - ${col['name']} (id: $id, short: ${id.substring(0, 8)}) owner: $ownerId');
         }
       } else {
         print(
