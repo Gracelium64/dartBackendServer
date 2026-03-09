@@ -44,6 +44,14 @@ dart bin/client.dart \
   --email user@example.com \
   --password mypassword \
   --login
+
+# Print the JWT token so you can export/reuse it
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email user@example.com \
+  --password mypassword \
+  --login \
+  --print-token
 ```
 
 **Note:** The token from `--login` is only used inside that same client run.
@@ -365,6 +373,7 @@ if __name__ == '__main__':
 | `--password`          | `-p`  | Password for login      | `mypass`                                                       |
 | `--admin-key`         | `-a`  | Admin key for admin ops | `secret_key`                                                   |
 | `--login`             | -     | Authenticate            | `--login`                                                      |
+| `--print-token`       | -     | Print JWT after login   | `--login --print-token`                                        |
 | `--health`            | -     | Check server status     | `--health`                                                     |
 | `--list-users`        | -     | List all users          | `--list-users`                                                 |
 | `--list-collections`  | -     | List all collections    | `--list-collections`                                           |

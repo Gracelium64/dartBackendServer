@@ -27,6 +27,9 @@ class ShadowAppClient {
   /// Set authentication token
   void setToken(String token) => _token = token;
 
+  /// Current authentication token (if available)
+  String? get token => _token;
+
   /// Set admin key (for admin operations without login)
   void setAdminKey(String key) => _adminKey = key;
 
@@ -431,6 +434,7 @@ EXAMPLES:
 
 Authentication (needed for most operations):
   dart bin/client.dart --server http://localhost:8080 --email user@example.com --password mypass --login
+  dart bin/client.dart --server http://localhost:8080 --email user@example.com --password mypass --login --print-token
   dart bin/client.dart --server http://localhost:8080 --token "\$SHADOW_TOKEN" --list-users
   
   After login, the token is used for subsequent commands in the same run.
@@ -503,6 +507,11 @@ Future<void> main(List<String> args) async {
     ..addFlag(
       'login',
       help: 'Login with email and password',
+    )
+    ..addFlag(
+      'print-token',
+      help: 'Print token after a successful login (for export/reuse)',
+      negatable: false,
     )
     ..addFlag(
       'health',
@@ -633,6 +642,17 @@ Future<void> main(List<String> args) async {
     }
     final success = await client.login(email, password);
     if (!success) exit(1);
+
+    if (results['print-token'] as bool) {
+      final token = client.token;
+      if (token == null || token.isEmpty) {
+        print('❌ Error: login succeeded but no token is available to print');
+        exit(1);
+      }
+      print('TOKEN: $token');
+    } else {
+      print('ℹ️  Tip: use --print-token to output the JWT for reuse.');
+    }
   }
 
   // Handle commands

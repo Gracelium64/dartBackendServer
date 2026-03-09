@@ -96,31 +96,29 @@ dart bin/client.dart \
   --server http://192.168.1.100:8080 \
   --email user@example.com \
   --password mypass \
-  --login \
+  --login --print-token \
   --list-users
+
+# Reuse token for later commands
+export SHADOW_TOKEN="your_jwt_token"
+dart bin/client.dart --server http://192.168.1.100:8080 --token "$SHADOW_TOKEN" --list-users
 
 # Perform CRUD operations
 dart bin/client.dart \
   --server http://192.168.1.100:8080 \
-  --email user@example.com \
-  --password mypass \
-  --login \
+  --token "$SHADOW_TOKEN" \
   --create-collection "posts"
 
 # Admin SQL query block (supports up to 5 statements)
 dart bin/client.dart \
   --server http://192.168.1.100:8080 \
-  --email admin@example.com \
-  --password adminpass \
-  --login \
+  --token "$SHADOW_TOKEN" \
   --sql "DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5"
 
 # Row cap override for this run/session
 dart bin/client.dart \
   --server http://192.168.1.100:8080 \
-  --email admin@example.com \
-  --password adminpass \
-  --login \
+  --token "$SHADOW_TOKEN" \
   --sql "SELECT * FROM documents" \
   --sql-cap 1000
 ```

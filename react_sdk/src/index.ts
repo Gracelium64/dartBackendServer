@@ -42,6 +42,7 @@ export type {
   SignupRequest,
   LoginRequest,
   AuthResponse,
+  RefreshTokenResponse,
   Collection,
   Document,
   CreateDocumentRequest,

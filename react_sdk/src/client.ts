@@ -12,6 +12,7 @@ import type {
   SignupRequest,
   LoginRequest,
   AuthResponse,
+  RefreshTokenResponse,
   CreateDocumentRequest,
   UpdateDocumentRequest,
   ListDocumentsParams,
@@ -27,8 +28,8 @@ import type {
 export class ShadowAppClient {
   private axiosInstance: AxiosInstance;
   private config: ShadowAppConfig;
-  private tokens: AuthTokens | null = null;
-  private refreshPromise: Promise<void> | null = null;
+  private token: string | null = null;
+  private refreshPromise: Promise<string> | null = null;
 
   constructor(config: ShadowAppConfig) {
     this.config = {
@@ -47,8 +48,8 @@ export class ShadowAppClient {
     // Request interceptor to add auth token
     this.axiosInstance.interceptors.request.use(
       (config) => {
-        if (this.tokens?.accessToken) {
-          config.headers.Authorization = `Bearer ${this.tokens.accessToken}`;
+        if (this.token) {
+          config.headers.Authorization = `Bearer ${this.token}`;
         }
         return config;
       },
@@ -61,12 +62,13 @@ export class ShadowAppClient {
       async (error: AxiosError) => {
         const originalRequest = error.config;
 
-        // If 401 and we have a refresh token, try to refresh
+        // If 401 and we have a token, try to refresh once and retry request.
         if (
           error.response?.status === 401 &&
-          this.tokens?.refreshToken &&
+          this.token &&
           originalRequest &&
-          !(originalRequest as any)._retry
+          !(originalRequest as any)._retry &&
+          !originalRequest.url?.includes("/auth/refresh")
         ) {
           (originalRequest as any)._retry = true;
 
@@ -99,10 +101,7 @@ export class ShadowAppClient {
     );
 
     if (response.data.success) {
-      this.setTokens({
-        accessToken: response.data.data.accessToken,
-        refreshToken: response.data.data.refreshToken,
-      });
+      this.setToken(response.data.data.token);
     }
 
     return response.data;
@@ -118,19 +117,16 @@ export class ShadowAppClient {
     );
 
     if (response.data.success) {
-      this.setTokens({
-        accessToken: response.data.data.accessToken,
-        refreshToken: response.data.data.refreshToken,
-      });
+      this.setToken(response.data.data.token);
     }
 
     return response.data;
   }
 
   /**
-   * Refresh access token using refresh token
+   * Refresh the current JWT token
    */
-  async refreshAccessToken(): Promise<void> {
+  async refreshAccessToken(): Promise<string> {
     // Prevent multiple simultaneous refresh requests
     if (this.refreshPromise) {
       return this.refreshPromise;
@@ -138,21 +134,19 @@ export class ShadowAppClient {
 
     this.refreshPromise = (async () => {
       try {
-        if (!this.tokens?.refreshToken) {
-          throw new Error("No refresh token available");
+        if (!this.token) {
+          throw new Error("No token available");
         }
 
-        const response = await this.axiosInstance.post<AuthResponse>(
-          "/auth/refresh",
-          { refreshToken: this.tokens.refreshToken },
-        );
+        const response =
+          await this.axiosInstance.post<RefreshTokenResponse>("/auth/refresh");
 
         if (response.data.success) {
-          this.setTokens({
-            accessToken: response.data.data.accessToken,
-            refreshToken: response.data.data.refreshToken,
-          });
+          this.setToken(response.data.data.token);
+          return response.data.data.token;
         }
+
+        throw new Error("Token refresh failed");
       } finally {
         this.refreshPromise = null;
       }
@@ -169,32 +163,46 @@ export class ShadowAppClient {
   }
 
   /**
-   * Set authentication tokens manually
+   * Set authentication token manually
+   */
+  setToken(token: string): void {
+    this.token = token;
+    this.config.onTokenRefresh?.(token);
+  }
+
+  /**
+   * Backward-compatible alias for setting token manually
    */
   setTokens(tokens: AuthTokens): void {
-    this.tokens = tokens;
-    this.config.onTokenRefresh?.(tokens.accessToken);
+    this.setToken(tokens.token);
   }
 
   /**
    * Clear authentication tokens
    */
   clearTokens(): void {
-    this.tokens = null;
+    this.token = null;
   }
 
   /**
    * Get current access token
    */
   getAccessToken(): string | null {
-    return this.tokens?.accessToken || null;
+    return this.token;
+  }
+
+  /**
+   * Get current token
+   */
+  getToken(): string | null {
+    return this.token;
   }
 
   /**
    * Check if user is authenticated
    */
   isAuthenticated(): boolean {
-    return !!this.tokens?.accessToken;
+    return !!this.token;
   }
 
   // ==================== Documents ====================

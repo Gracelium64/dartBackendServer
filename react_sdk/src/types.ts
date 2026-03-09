@@ -11,15 +11,14 @@ export interface ShadowAppConfig {
 }
 
 export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
+  token: string;
 }
 
 export interface User {
   id: string;
   email: string;
   role: "user" | "admin";
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface SignupRequest {
@@ -35,9 +34,17 @@ export interface LoginRequest {
 export interface AuthResponse {
   success: boolean;
   data: {
-    user: User;
-    accessToken: string;
-    refreshToken: string;
+    id: string;
+    email: string;
+    role: "user" | "admin";
+    token: string;
+  };
+}
+
+export interface RefreshTokenResponse {
+  success: boolean;
+  data: {
+    token: string;
   };
 }
 
@@ -112,6 +119,7 @@ export interface AuditLog {
   resourceId: string;
   status: "success" | "failed";
   errorMessage?: string;
+  details?: string;
   timestamp: string;
 }
 

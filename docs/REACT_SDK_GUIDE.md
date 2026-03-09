@@ -121,7 +121,7 @@ export default function App() {
         },
         onTokenRefresh: (token) => {
           // Optional: Store token for persistence
-          localStorage.setItem("accessToken", token);
+          localStorage.setItem("token", token);
         },
       }}
     >
@@ -285,7 +285,7 @@ const config = {
   timeout: 60000, // 60 seconds for slow networks
   onTokenRefresh: (token) => {
     // Persist token to localStorage
-    localStorage.setItem("shadowapp_access_token", token);
+    localStorage.setItem("shadowapp_token", token);
     console.log("Token refreshed successfully");
   },
   onAuthError: () => {
@@ -410,12 +410,11 @@ import { ShadowAppClient } from "@shadow-app/react-sdk";
 
 const client = new ShadowAppClient({ baseURL: "http://localhost:8080" });
 
-// Set tokens from storage
-const accessToken = localStorage.getItem("access_token");
-const refreshToken = localStorage.getItem("refresh_token");
+// Set token from storage
+const token = localStorage.getItem("token");
 
-if (accessToken && refreshToken) {
-  client.setTokens({ accessToken, refreshToken });
+if (token) {
+  client.setToken(token);
 }
 
 // Check authentication status
@@ -423,7 +422,7 @@ if (client.isAuthenticated()) {
   console.log("User is authenticated");
 }
 
-// Get current access token
+// Get current token
 const token = client.getAccessToken();
 
 // Manually refresh token
@@ -452,12 +451,11 @@ function AuthManager({ children }: { children: React.ReactNode }) {
   const { client } = useShadowApp();
 
   useEffect(() => {
-    // Restore tokens from localStorage
-    const accessToken = localStorage.getItem("access_token");
-    const refreshToken = localStorage.getItem("refresh_token");
+    // Restore token from localStorage
+    const token = localStorage.getItem("token");
 
-    if (accessToken && refreshToken) {
-      client.setTokens({ accessToken, refreshToken });
+    if (token) {
+      client.setToken(token);
     }
   }, [client]);
 
@@ -611,6 +609,7 @@ return <p>Loading documents...</p>;
 }
 
 return (
+
 <div>
 <h2>Notes ({documents.length})</h2>
 
@@ -1056,9 +1055,10 @@ interface UploadMediaRequest {
 interface AuthResponse {
   success: boolean;
   data: {
-    user: User;
-    accessToken: string;
-    refreshToken: string;
+    id: string;
+    email: string;
+    role: "user" | "admin";
+    token: string;
   };
 }
 
@@ -1245,16 +1245,15 @@ const url = URL.createObjectURL(blob);
 const config = {
   baseURL: "http://localhost:8080",
   onTokenRefresh: (token) => {
-    localStorage.setItem("access_token", token);
+    localStorage.setItem("token", token);
   },
 };
 
 // Restore on app start
 useEffect(() => {
-  const token = localStorage.getItem("access_token");
-  const refresh = localStorage.getItem("refresh_token");
-  if (token && refresh) {
-    client.setTokens({ accessToken: token, refreshToken: refresh });
+  const token = localStorage.getItem("token");
+  if (token) {
+    client.setToken(token);
   }
 }, []);
 ```

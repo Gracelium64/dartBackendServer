@@ -147,7 +147,7 @@ const response = await client.login({
 client.logout();
 
 // Manual token management
-client.setTokens({ accessToken: "xxx", refreshToken: "yyy" });
+client.setToken("xxx");
 const token = client.getAccessToken();
 const isAuth = client.isAuthenticated();
 ```
@@ -327,19 +327,15 @@ Store tokens in localStorage:
 const client = new ShadowAppClient({
   baseURL: "http://localhost:8080",
   onTokenRefresh: (token) => {
-    // Save to localStorage on refresh
-    localStorage.setItem("accessToken", token);
+    // Save latest token to localStorage
+    localStorage.setItem("token", token);
   },
 });
 
-// Restore tokens on app load
-const savedToken = localStorage.getItem("accessToken");
-const savedRefreshToken = localStorage.getItem("refreshToken");
-if (savedToken && savedRefreshToken) {
-  client.setTokens({
-    accessToken: savedToken,
-    refreshToken: savedRefreshToken,
-  });
+// Restore token on app load
+const savedToken = localStorage.getItem("token");
+if (savedToken) {
+  client.setToken(savedToken);
 }
 ```
 

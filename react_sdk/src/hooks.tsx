@@ -20,6 +20,18 @@ import type {
   ApiError,
 } from "./types";
 
+function authPayloadToUser(payload: {
+  id: string;
+  email: string;
+  role: "user" | "admin";
+}): User {
+  return {
+    id: payload.id,
+    email: payload.email,
+    role: payload.role,
+  };
+}
+
 // ==================== Auth Hooks ====================
 
 export interface UseAuthReturn {
@@ -47,7 +59,7 @@ export function useAuth(client: ShadowAppClient): UseAuthReturn {
       try {
         const response = await client.signup(request);
         if (response.success) {
-          setUser(response.data.user);
+          setUser(authPayloadToUser(response.data));
         }
       } catch (err) {
         setError(err as ApiError);
@@ -66,7 +78,7 @@ export function useAuth(client: ShadowAppClient): UseAuthReturn {
       try {
         const response = await client.login(request);
         if (response.success) {
-          setUser(response.data.user);
+          setUser(authPayloadToUser(response.data));
         }
       } catch (err) {
         setError(err as ApiError);

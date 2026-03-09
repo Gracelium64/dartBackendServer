@@ -796,18 +796,19 @@ Behind the scenes:
 
 2. **Login**: You send email + password to `/auth/login`
    - Backend retrieves password hash, compares with bcrypt
-   - If match, generates JWT token (RS256 algorithm, 24h expiry)
-   - Token is a signed, encrypted blob that proves your identity
+
+- If match, generates JWT token (HS256 algorithm, configured expiry)
+- Token is a signed, encrypted blob that proves your identity
 
 3. **JWT Token**:
 
    ```
-   eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFiYzEyMyIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsImV4cCI6MTYwMjM5NjU0N30.SflKxwRJSmYq...
+   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFiYzEyMyIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsImV4cCI6MTYwMjM5NjU0N30.SflKxwRJSmYq...
    ```
 
-   - **Header**: Algorithm (RS256)
-   - **Payload**: User ID, email, expiration time
-   - **Signature**: Cryptographic proof server created this token
+- **Header**: Algorithm (HS256)
+- **Payload**: User ID, email, expiration time
+- **Signature**: Cryptographic proof server created this token
 
 4. **Token Storage**: SDK stores token locally in `SharedPreferences` (Android) or `Keychain` (iOS)
 
