@@ -157,6 +157,25 @@ Press Ctrl+C to stop the server gracefully.
           ),
         );
 
+        // Keep file logging and DB-backed audit trail in sync.
+        try {
+          await database.logAction(
+            AuditLog(
+              userId: userId,
+              action: 'HTTP_${request.method}',
+              resourceType: 'http',
+              resourceId: resourcePath,
+              status: status,
+              errorMessage: status == 'failed'
+                  ? 'HTTP ${response.statusCode} (${duration.inMilliseconds}ms)'
+                  : null,
+            ),
+          );
+        } catch (e) {
+          // Request handling should not fail just because audit persistence fails.
+          print('[LOG ERROR] Failed to persist HTTP audit log: $e');
+        }
+
         print(
           '[${request.method}] ${request.url.path} → ${response.statusCode} (${duration.inMilliseconds}ms)',
         );
