@@ -4,7 +4,6 @@
 import 'package:shadow_app_backend/database/db_manager.dart';
 import 'package:shadow_app_backend/auth/auth_service.dart';
 import 'package:shadow_app_backend/database/models.dart';
-import 'package:shadow_app_backend/logging/logger.dart';
 import 'terminal_ui.dart';
 
 /// List all users in a formatted table
@@ -14,7 +13,7 @@ Future<void> listUsers(DatabaseManager database) async {
 
     if (users.isEmpty) {
       TerminalUI.printWarning('No users found');
-      await logger.logAction(AuditLog(
+      await database.logAction(AuditLog(
         userId: 'admin_console',
         action: 'LIST',
         resourceType: 'user',
@@ -38,7 +37,7 @@ Future<void> listUsers(DatabaseManager database) async {
       rows,
     );
     TerminalUI.printSuccess('Total users: ${users.length}');
-    await logger.logAction(AuditLog(
+    await database.logAction(AuditLog(
       userId: 'admin_console',
       action: 'LIST',
       resourceType: 'user',
@@ -46,7 +45,7 @@ Future<void> listUsers(DatabaseManager database) async {
       status: 'success',
     ));
   } catch (e) {
-    await logger.logAction(AuditLog(
+    await database.logAction(AuditLog(
       userId: 'admin_console',
       action: 'LIST',
       resourceType: 'user',

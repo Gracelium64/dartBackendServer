@@ -63,11 +63,45 @@ class DatabaseManager {
     // Create schema if new database
     SchemaMigration.createTables(_db);
     SchemaMigration.runMigrations(_db);
+    _ensureServiceUsers();
 
     // Keep the global DB handle in sync for services that use it directly.
     database = this;
 
     print('[DB] Database initialized successfully');
+  }
+
+  void _ensureServiceUsers() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final stmt = _db.prepare('''
+      INSERT OR IGNORE INTO users (id, email, password_hash, role, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    ''');
+
+    final serviceUsers = <List<Object?>>[
+      ['system', 'system@shadow.local', 'service-account', 'admin', now, now],
+      [
+        'admin_console',
+        'admin_console@shadow.local',
+        'service-account',
+        'admin',
+        now,
+        now,
+      ],
+      [
+        'anonymous',
+        'anonymous@shadow.local',
+        'service-account',
+        'user',
+        now,
+        now,
+      ],
+    ];
+
+    for (final row in serviceUsers) {
+      stmt.execute(row);
+    }
+    stmt.dispose();
   }
 
   /// Close database connection
@@ -877,17 +911,23 @@ class DatabaseManager {
     required String status,
     String? errorMessage,
   }) async {
+    final entry = AuditLog(
+      userId: 'system',
+      action: action,
+      resourceType: resourceType,
+      resourceId: resourceId,
+      status: status,
+      errorMessage: errorMessage,
+    );
+
     try {
-      await logger.logAction(
-        AuditLog(
-          userId: 'system',
-          action: action,
-          resourceType: resourceType,
-          resourceId: resourceId,
-          status: status,
-          errorMessage: errorMessage,
-        ),
-      );
+      await logAction(entry);
+    } catch (_) {
+      // Never allow audit persistence failures to break DB operations.
+    }
+
+    try {
+      await logger.logAction(entry);
     } catch (_) {
       // Never allow logging failures to break DB operations.
     }
