@@ -41,6 +41,7 @@ Future<void> runAdminCommand(ArgResults results) async {
     globalConfig.dbPath = dbPath;
     database = DatabaseManager();
     await database.initialize(dbPath);
+    database.setAuditActor('admin_console');
     await logger.initialize();
     TerminalUI.printSuccess('Database connected: $dbPath');
   } catch (e) {

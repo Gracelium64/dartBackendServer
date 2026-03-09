@@ -129,6 +129,31 @@ class ShadowAppClient {
     }
   }
 
+  String _shortId(dynamic value) {
+    final text = value?.toString();
+    if (text == null || text.isEmpty) {
+      return 'unknown';
+    }
+    return text.length <= 8 ? text : text.substring(0, 8);
+  }
+
+  bool _isSuccessResponse(http.Response response) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      return false;
+    }
+
+    try {
+      final payload = jsonDecode(response.body);
+      if (payload is Map<String, dynamic> && payload['success'] is bool) {
+        return payload['success'] as bool;
+      }
+    } catch (_) {
+      // Some endpoints may not return a JSON body with a success field.
+    }
+
+    return true;
+  }
+
   /// List all users
   Future<void> listUsers() async {
     try {
@@ -139,7 +164,7 @@ class ShadowAppClient {
         print('\n📋 Users (${users.length}):');
         for (final user in users) {
           print(
-              '  - ${user['email']} (${user['id'].substring(0, 8)}) [${user['role']}]');
+              '  - ${user['email']} (${_shortId(user['id'])}) [${user['role']}]');
         }
       } else {
         print(
@@ -182,10 +207,20 @@ class ShadowAppClient {
         final payload = jsonDecode(response.body) as Map<String, dynamic>;
         final docs = (payload['data'] as List?) ?? const [];
         print('\n📄 Documents in collection (${docs.length}):');
-        for (final doc in docs) {
+        for (var i = 0; i < docs.length; i++) {
+          final doc = docs[i] as Map<String, dynamic>;
+          final creator =
+              doc['owner_id'] ?? doc['creator'] ?? doc['created_by'];
+          final data = doc['data'];
+          final variables = data is Map<String, dynamic>
+              ? data.keys.toList(growable: false)
+              : const <String>[];
+
+          print('  ${i + 1}. id: ${_shortId(doc['id'])}');
+          print('     creator: ${_shortId(creator)}');
           print(
-              '  - ${doc['id'].substring(0, 8)} owner: ${doc['owner_id'].substring(0, 8)}');
-          print('    data: ${jsonEncode(doc['data'])}');
+              '     variables: ${variables.isEmpty ? '-' : variables.join(', ')}');
+          print('     data: ${jsonEncode(data)}');
         }
       } else {
         print(
@@ -203,10 +238,10 @@ class ShadowAppClient {
         'name': name,
       });
 
-      if (response.statusCode == 201) {
+      if (_isSuccessResponse(response)) {
         final payload = jsonDecode(response.body) as Map<String, dynamic>;
         final col = payload['data'] as Map<String, dynamic>;
-        print('✓ Collection created: $name (ID: ${col['id'].substring(0, 8)})');
+        print('✓ Collection created: $name (ID: ${_shortId(col['id'])})');
       } else {
         print('❌ Failed to create collection: ${response.body}');
       }
@@ -223,10 +258,10 @@ class ShadowAppClient {
           'POST', '/api/collections/$collectionId/documents',
           body: data);
 
-      if (response.statusCode == 201) {
+      if (_isSuccessResponse(response)) {
         final payload = jsonDecode(response.body) as Map<String, dynamic>;
         final doc = payload['data'] as Map<String, dynamic>;
-        print('✓ Document created (ID: ${doc['id'].substring(0, 8)})');
+        print('✓ Document created (ID: ${_shortId(doc['id'])})');
       } else {
         print('❌ Failed to create document: ${response.body}');
       }

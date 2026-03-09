@@ -206,7 +206,7 @@ Future<void> _handleCreate(
         final user = User(email: email, passwordHash: password, role: role);
         await database.createUser(user);
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'CREATE',
           resourceType: 'user',
           resourceId: user.id,
@@ -228,7 +228,7 @@ Future<void> _handleCreate(
         final collection = Collection(ownerId: ownerId, name: collectionName);
         await database.createCollection(collection);
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'CREATE',
           resourceType: 'collection',
           resourceId: collection.id,
@@ -259,7 +259,7 @@ Future<void> _handleCreate(
         );
         await database.createDocument(document);
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'CREATE',
           resourceType: 'document',
           resourceId: document.id,
@@ -276,7 +276,7 @@ Future<void> _handleCreate(
     }
   } catch (e) {
     await logger.logAction(AuditLog(
-      userId: 'admin',
+      userId: 'admin_console',
       action: 'CREATE',
       resourceType: 'error',
       resourceId: 'unknown',
@@ -311,7 +311,7 @@ Future<void> _handleRead(
         if (document == null) {
           print('❌ Document not found');
           await logger.logAction(AuditLog(
-            userId: 'admin',
+            userId: 'admin_console',
             action: 'READ',
             resourceType: 'document',
             resourceId: documentId,
@@ -323,7 +323,7 @@ Future<void> _handleRead(
         }
 
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'READ',
           resourceType: 'document',
           resourceId: documentId,
@@ -343,7 +343,7 @@ Future<void> _handleRead(
     }
   } catch (e) {
     await logger.logAction(AuditLog(
-      userId: 'admin',
+      userId: 'admin_console',
       action: 'READ',
       resourceType: 'document',
       resourceId: args.length > 1 ? args[1] : 'unknown',
@@ -382,7 +382,7 @@ Future<void> _handleUpdate(
         if (doc == null) {
           print('❌ Document not found');
           await logger.logAction(AuditLog(
-            userId: 'admin',
+            userId: 'admin_console',
             action: 'UPDATE',
             resourceType: 'document',
             resourceId: documentId,
@@ -406,7 +406,7 @@ Future<void> _handleUpdate(
 
         await database.updateDocument(updatedDoc);
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'UPDATE',
           resourceType: 'document',
           resourceId: documentId,
@@ -428,7 +428,7 @@ Future<void> _handleUpdate(
 
         await database.updateCollectionRules(collectionId, rules);
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'UPDATE',
           resourceType: 'collection',
           resourceId: collectionId,
@@ -443,7 +443,7 @@ Future<void> _handleUpdate(
     }
   } catch (e) {
     await logger.logAction(AuditLog(
-      userId: 'admin',
+      userId: 'admin_console',
       action: 'UPDATE',
       resourceType: args.isNotEmpty ? args[0].toLowerCase() : 'unknown',
       resourceId: args.length > 2 ? args[2] : 'unknown',
@@ -475,7 +475,7 @@ Future<void> _handleDelete(
         final userId = args[1];
         await database.deleteUser(userId);
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'DELETE',
           resourceType: 'user',
           resourceId: userId,
@@ -494,7 +494,7 @@ Future<void> _handleDelete(
         final documentId = args[1];
         await database.deleteDocument(documentId);
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'DELETE',
           resourceType: 'document',
           resourceId: documentId,
@@ -509,7 +509,7 @@ Future<void> _handleDelete(
     }
   } catch (e) {
     await logger.logAction(AuditLog(
-      userId: 'admin',
+      userId: 'admin_console',
       action: 'DELETE',
       resourceType: args.isNotEmpty ? args[0].toLowerCase() : 'unknown',
       resourceId: args.length > 1 ? args[1] : 'unknown',
@@ -544,7 +544,7 @@ Future<void> _handleList(
           }
         }
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'LIST',
           resourceType: 'user',
           resourceId: 'all',
@@ -565,7 +565,7 @@ Future<void> _handleList(
           }
         }
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'LIST',
           resourceType: 'collection',
           resourceId: 'all',
@@ -592,7 +592,7 @@ Future<void> _handleList(
           }
         }
         await logger.logAction(AuditLog(
-          userId: 'admin',
+          userId: 'admin_console',
           action: 'LIST',
           resourceType: 'document',
           resourceId: collectionId,
@@ -607,7 +607,7 @@ Future<void> _handleList(
     }
   } catch (e) {
     await logger.logAction(AuditLog(
-      userId: 'admin',
+      userId: 'admin_console',
       action: 'LIST',
       resourceType: args.isNotEmpty ? args[0].toLowerCase() : 'unknown',
       resourceId: 'unknown',
@@ -651,7 +651,7 @@ Future<void> _handleQuery(String sql, DatabaseManager database, String fullCmd,
     }
 
     await logger.logAction(AuditLog(
-      userId: 'admin',
+      userId: 'admin_console',
       action: 'QUERY',
       resourceType: 'sql',
       resourceId: 'admin-sql',
@@ -661,7 +661,7 @@ Future<void> _handleQuery(String sql, DatabaseManager database, String fullCmd,
     ));
   } catch (e) {
     await logger.logAction(AuditLog(
-      userId: 'admin',
+      userId: 'admin_console',
       action: 'QUERY',
       resourceType: 'sql',
       resourceId: 'admin-sql',
@@ -701,7 +701,7 @@ Future<void> _handleQueryCap(
     }
 
     await logger.logAction(AuditLog(
-      userId: 'admin',
+      userId: 'admin_console',
       action: 'QUERY_CAP',
       resourceType: 'sql',
       resourceId: 'admin-sql',
@@ -710,7 +710,7 @@ Future<void> _handleQueryCap(
     ));
   } catch (e) {
     await logger.logAction(AuditLog(
-      userId: 'admin',
+      userId: 'admin_console',
       action: 'QUERY_CAP',
       resourceType: 'sql',
       resourceId: 'admin-sql',

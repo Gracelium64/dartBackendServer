@@ -467,6 +467,7 @@ Future<Response> handleListDocuments(Request request) async {
             .map((d) => {
                   'id': d.id,
                   'collection_id': d.collectionId,
+                  'owner_id': d.ownerId,
                   'data': d.data,
                   'created_at': d.createdAt.toIso8601String(),
                   'updated_at': d.updatedAt.toIso8601String(),
@@ -556,6 +557,8 @@ Future<Response> handleAdminSqlQuery(Request request) async {
       params: params,
       maxRows: maxRows,
       disableRowCap: disableRowCap,
+      actorId: userId,
+      source: 'api_admin_sql',
     );
 
     var totalRows = 0;

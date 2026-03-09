@@ -37,6 +37,7 @@ import 'commands/server_command.dart';
 import 'commands/log_tail_command.dart';
 import 'commands/admin_command.dart';
 import 'helpers/terminal_ui.dart';
+import 'package:shadow_app_backend/logging/logger.dart';
 
 /// Application version
 const String appVersion = '0.1.0';
@@ -93,7 +94,25 @@ Future<void> main(List<String> args) async {
     // Dispatch to the appropriate command handler
     switch (command.name) {
       case 'server':
-        await runServerCommand(command);
+        await runZonedGuarded(
+          () async {
+            await runServerCommand(command);
+          },
+          (error, stackTrace) {
+            stderr.writeln('Unhandled server zone error: $error');
+          },
+          zoneSpecification: ZoneSpecification(
+            print: (self, parent, zone, line) {
+              parent.print(zone, line);
+              unawaited(
+                logger.logConsoleMessage(
+                  line,
+                  source: 'server-terminal',
+                ),
+              );
+            },
+          ),
+        );
         break;
       case 'log-tail':
         await runLogTailCommand(command);

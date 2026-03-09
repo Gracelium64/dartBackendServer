@@ -23,6 +23,7 @@ class ServerLogger {
   late StreamController<AuditLog> _liveLogStream;
   late List<AuditLog> _recentLogs;
   static const int _maxRecentLogs = 1000; // Keep last 1000 in memory
+  bool _isInitialized = false;
 
   factory ServerLogger() {
     return _instance;
@@ -46,6 +47,7 @@ class ServerLogger {
 
     // Create today's log file
     _createTodayLogFile();
+    _isInitialized = true;
 
     print('[LOG] Logging initialized at ${globalConfig.logFilePath}');
 
@@ -65,6 +67,10 @@ class ServerLogger {
 
   /// Log an audit action
   Future<void> logAction(AuditLog action) async {
+    if (!_isInitialized) {
+      return;
+    }
+
     try {
       // Add to in-memory stream for live tail
       _liveLogStream.add(action);
@@ -86,6 +92,35 @@ class ServerLogger {
     } catch (e) {
       print('[LOG ERROR] Failed to log action: $e');
     }
+  }
+
+  bool get isInitialized => _isInitialized;
+
+  /// Mirror terminal output into the main log file while preserving console output.
+  Future<void> logConsoleMessage(
+    String message, {
+    String source = 'server-terminal',
+  }) async {
+    if (!_isInitialized) {
+      return;
+    }
+
+    final normalized = message.trimRight();
+    if (normalized.isEmpty) {
+      return;
+    }
+
+    final entry = AuditLog(
+      userId: source,
+      action: 'TERMINAL_OUTPUT',
+      resourceType: 'console',
+      resourceId: source,
+      status: 'success',
+      details: normalized,
+    );
+
+    // Reuse the regular log pipeline so live tail and file outputs stay consistent.
+    await logAction(entry);
   }
 
   /// Format log entry for file writing
@@ -195,9 +230,13 @@ class ServerLogger {
 
   /// Close logger (call on shutdown)
   Future<void> close() async {
+    if (!_isInitialized) {
+      return;
+    }
     await _logSink.flush();
     await _logSink.close();
     await _liveLogStream.close();
+    _isInitialized = false;
   }
 
   /// Export logs as archive

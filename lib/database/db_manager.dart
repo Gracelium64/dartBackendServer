@@ -26,6 +26,7 @@ extension RowToMap on Row {
 class DatabaseManager {
   late Database _db;
   static DatabaseManager? _instance;
+  String _auditActor = 'system';
 
   /// Singleton pattern - ensure only one database connection
   factory DatabaseManager() {
@@ -34,6 +35,15 @@ class DatabaseManager {
   }
 
   DatabaseManager._internal();
+
+  /// Set the actor identity used by DB-level audit entries.
+  ///
+  /// Server runtime uses the default `system`, while interactive admin console
+  /// can set `admin_console` for operation attribution.
+  void setAuditActor(String actorId) {
+    final normalized = actorId.trim();
+    _auditActor = normalized.isEmpty ? 'system' : normalized;
+  }
 
   /// Initialize and open database connection
   Future<void> initialize(String dbPath) async {
@@ -556,6 +566,8 @@ class DatabaseManager {
     List<Object?> params = const [],
     int? maxRows,
     bool disableRowCap = false,
+    String actorId = 'system',
+    String source = 'admin_sql',
   }) async {
     final normalizedSql = sql.trim();
     if (normalizedSql.isEmpty) {
@@ -585,6 +597,9 @@ class DatabaseManager {
         final keyword = _statementKeyword(statement);
         final isReadStatement =
             keyword == 'select' || keyword == 'with' || keyword == 'pragma';
+        final statementId = '$source:${i + 1}';
+        final trimmedStatement =
+            statement.replaceAll(RegExp(r'\s+'), ' ').trim();
 
         if (isReadStatement) {
           final stmt = _db.prepare(statement);
@@ -603,6 +618,16 @@ class DatabaseManager {
             'row_count': cappedRows.length,
             'row_cap_applied': effectiveMaxRows != null,
           });
+
+          await _logDbAction(
+            action: 'QUERY',
+            resourceType: 'sql_statement',
+            resourceId: statementId,
+            status: 'success',
+            details:
+                '$keyword rows=${cappedRows.length} cap=${effectiveMaxRows ?? 'off'} sql="$trimmedStatement"',
+            actorId: actorId,
+          );
           continue;
         }
 
@@ -617,10 +642,28 @@ class DatabaseManager {
           'row_count': 0,
           'row_cap_applied': false,
         });
+
+        await _logDbAction(
+          action: 'QUERY',
+          resourceType: 'sql_statement',
+          resourceId: statementId,
+          status: 'success',
+          details: '$keyword sql="$trimmedStatement"',
+          actorId: actorId,
+        );
       }
 
       return results;
     } catch (e) {
+      await _logDbAction(
+        action: 'QUERY',
+        resourceType: 'sql_statement',
+        resourceId: source,
+        status: 'failed',
+        errorMessage: e.toString(),
+        details: sql,
+        actorId: actorId,
+      );
       print('[DB ERROR] Failed to execute admin SQL: $e');
       rethrow;
     }
@@ -910,14 +953,17 @@ class DatabaseManager {
     required String resourceId,
     required String status,
     String? errorMessage,
+    String? details,
+    String? actorId,
   }) async {
     final entry = AuditLog(
-      userId: 'system',
+      userId: actorId ?? _auditActor,
       action: action,
       resourceType: resourceType,
       resourceId: resourceId,
       status: status,
       errorMessage: errorMessage,
+      details: details,
     );
 
     try {
