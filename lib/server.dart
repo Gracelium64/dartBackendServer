@@ -140,7 +140,23 @@ Press Ctrl+C to stop the server gracefully.
         final response = await innerHandler(request);
         final duration = DateTime.now().difference(startTime);
         final claims = request.context['claims'] as Map<String, dynamic>?;
-        final userId = claims?['sub']?.toString() ?? 'anonymous';
+
+        // The logging middleware wraps auth middleware, so request.context may
+        // not always contain claims here. Derive user ID from JWT when present.
+        String? authenticatedUserId = claims?['sub']?.toString();
+        final authHeader = request.headers['authorization'];
+        if ((authenticatedUserId == null || authenticatedUserId.isEmpty) &&
+            authHeader != null &&
+            authHeader.startsWith('Bearer ')) {
+          final token = authHeader.substring(7);
+          final tokenClaims = AuthService.validateToken(token);
+          authenticatedUserId = tokenClaims?['sub']?.toString();
+        }
+
+        final userId =
+            (authenticatedUserId == null || authenticatedUserId.isEmpty)
+                ? 'anonymous'
+                : authenticatedUserId;
         final status = response.statusCode >= 400 ? 'failed' : 'success';
         final resourcePath = '/${request.url.path}';
 
@@ -157,23 +173,25 @@ Press Ctrl+C to stop the server gracefully.
           ),
         );
 
-        // Keep file logging and DB-backed audit trail in sync.
-        try {
-          await database.logAction(
-            AuditLog(
-              userId: userId,
-              action: 'HTTP_${request.method}',
-              resourceType: 'http',
-              resourceId: resourcePath,
-              status: status,
-              errorMessage: status == 'failed'
-                  ? 'HTTP ${response.statusCode} (${duration.inMilliseconds}ms)'
-                  : null,
-            ),
-          );
-        } catch (e) {
-          // Request handling should not fail just because audit persistence fails.
-          print('[LOG ERROR] Failed to persist HTTP audit log: $e');
+        // Keep DB-backed audit trail in sync when user identity is known.
+        if (authenticatedUserId != null && authenticatedUserId.isNotEmpty) {
+          try {
+            await database.logAction(
+              AuditLog(
+                userId: authenticatedUserId,
+                action: 'HTTP_${request.method}',
+                resourceType: 'http',
+                resourceId: resourcePath,
+                status: status,
+                errorMessage: status == 'failed'
+                    ? 'HTTP ${response.statusCode} (${duration.inMilliseconds}ms)'
+                    : null,
+              ),
+            );
+          } catch (e) {
+            // Request handling should not fail just because audit persistence fails.
+            print('[LOG ERROR] Failed to persist HTTP audit log: $e');
+          }
         }
 
         print(
@@ -391,6 +409,16 @@ Press Ctrl+C to stop the server gracefully.
       }
 
       final users = await database.getAllUsers();
+      await database.logAction(
+        AuditLog(
+          userId: userId,
+          action: 'LIST',
+          resourceType: 'user',
+          resourceId: 'all',
+          status: 'success',
+        ),
+      );
+
       return Response.ok(
         jsonEncode({
           'success': true,
@@ -437,6 +465,16 @@ Press Ctrl+C to stop the server gracefully.
       final collections = normalizedRole == 'admin'
           ? await database.getAllCollections()
           : await database.getUserCollections(userId);
+
+      await database.logAction(
+        AuditLog(
+          userId: userId,
+          action: 'LIST',
+          resourceType: 'collection',
+          resourceId: normalizedRole == 'admin' ? 'all' : 'owned',
+          status: 'success',
+        ),
+      );
 
       return Response.ok(
         jsonEncode({
@@ -499,6 +537,16 @@ Press Ctrl+C to stop the server gracefully.
           ownerId: userId,
           name: name.trim(),
           rules: rules,
+        ),
+      );
+
+      await database.logAction(
+        AuditLog(
+          userId: userId,
+          action: 'CREATE',
+          resourceType: 'collection',
+          resourceId: created.id,
+          status: 'success',
         ),
       );
 
