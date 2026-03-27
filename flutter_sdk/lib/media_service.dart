@@ -8,7 +8,6 @@ import 'dart:typed_data';
 import 'dart:convert';
 import 'shadow_app.dart';
 
-
 /// Media upload result
 class MediaUploadResult {
   final String id;
@@ -57,6 +56,8 @@ class MediaMetadata {
   });
 
   factory MediaMetadata.fromJson(Map<String, dynamic> json) {
+    final rawTimestamp = (json['uploaded_at'] ?? json['created_at'])
+        ?.toString();
     return MediaMetadata(
       id: json['id'] as String,
       fileName: json['file_name'] as String,
@@ -64,7 +65,10 @@ class MediaMetadata {
       originalSize: json['original_size'] as int,
       compressedSize: json['compressed_size'] as int,
       compressionAlgo: json['compression_algo'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String? ?? ''),
+      createdAt: rawTimestamp != null
+          ? DateTime.tryParse(rawTimestamp) ??
+                DateTime.fromMillisecondsSinceEpoch(0)
+          : DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }
@@ -74,10 +78,7 @@ class MediaService {
   final String serverUrl;
   final SharedPreferences prefs;
 
-  MediaService({
-    required this.serverUrl,
-    required this.prefs,
-  });
+  MediaService({required this.serverUrl, required this.prefs});
 
   /// Get stored auth token
   String? _getToken() {
@@ -85,12 +86,12 @@ class MediaService {
   }
 
   /// Upload media (image, video, file)
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final file = File('/path/to/image.jpg');
   /// final bytes = await file.readAsBytes();
-  /// 
+  ///
   /// final result = await ShadowApp.media.upload(
   ///   fileBytes: bytes,
   ///   fileName: 'my_image.jpg',
@@ -98,7 +99,7 @@ class MediaService {
   ///   destinationCollection: 'photos',
   ///   destinationDocId: 'doc-123',
   /// );
-  /// 
+  ///
   /// print('Uploaded: ${result.id}');
   /// print('Compression: ${result.compressionRatio.toStringAsFixed(1)}%');
   /// ```
@@ -111,39 +112,36 @@ class MediaService {
   }) async {
     final token = _getToken();
     if (token == null) {
-      throw AuthException(
-        message: 'Not authenticated',
-        originalError: null,
-      );
+      throw AuthException(message: 'Not authenticated', originalError: null);
     }
 
     if (fileBytes.isEmpty) {
-      throw ValidationException(
-        message: 'File is empty',
-        originalError: null,
-      );
+      throw ValidationException(message: 'File is empty', originalError: null);
     }
 
     try {
       // Create multipart request
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$serverUrl/api/media/upload'),
-      )
-        ..headers['Authorization'] = 'Bearer $token'
-        ..fields['destination_collection'] = destinationCollection
-        ..fields['destination_doc_id'] = destinationDocId
-        ..files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            fileBytes,
-            filename: fileName,
-          ),
-        );
+      final request =
+          http.MultipartRequest(
+              'POST',
+              Uri.parse('$serverUrl/api/media/upload'),
+            )
+            ..headers['Authorization'] = 'Bearer $token'
+            ..fields['destination_collection'] = destinationCollection
+            ..fields['destination_doc_id'] = destinationDocId
+            ..files.add(
+              http.MultipartFile.fromBytes(
+                'file',
+                fileBytes,
+                filename: fileName,
+              ),
+            );
 
       final streamedResponse = await request.send().timeout(
-            Duration(seconds: ShadowAppConfig.networkTimeout * 2), // Longer for uploads
-          );
+        Duration(
+          seconds: ShadowAppConfig.networkTimeout * 2,
+        ), // Longer for uploads
+      );
 
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -174,25 +172,24 @@ class MediaService {
 
       if (ShadowAppConfig.enableDebugLogging) {
         print('[MEDIA] Uploaded: ${result.id}');
-        print('[MEDIA] Compression: ${result.compressionRatio.toStringAsFixed(1)}%');
+        print(
+          '[MEDIA] Compression: ${result.compressionRatio.toStringAsFixed(1)}%',
+        );
       }
 
       return result;
     } catch (e) {
       if (e is ShadowAppException) rethrow;
-      throw NetworkException(
-        message: 'Upload failed: $e',
-        originalError: e,
-      );
+      throw NetworkException(message: 'Upload failed: $e', originalError: e);
     }
   }
 
   /// Download media by ID
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final bytes = await ShadowApp.media.download('media-123');
-  /// 
+  ///
   /// // Save to file
   /// final appDir = await getApplicationDocumentsDirectory();
   /// final file = File('${appDir.path}/downloaded_image.jpg');
@@ -201,19 +198,14 @@ class MediaService {
   Future<Uint8List> download(String mediaId) async {
     final token = _getToken();
     if (token == null) {
-      throw AuthException(
-        message: 'Not authenticated',
-        originalError: null,
-      );
+      throw AuthException(message: 'Not authenticated', originalError: null);
     }
 
     try {
       final response = await http
           .get(
             Uri.parse('$serverUrl/api/media/download/$mediaId'),
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
+            headers: {'Authorization': 'Bearer $token'},
           )
           .timeout(Duration(seconds: ShadowAppConfig.networkTimeout * 2));
 
@@ -239,21 +231,20 @@ class MediaService {
       }
 
       if (ShadowAppConfig.enableDebugLogging) {
-        print('[MEDIA] Downloaded: $mediaId (${response.bodyBytes.length} bytes)');
+        print(
+          '[MEDIA] Downloaded: $mediaId (${response.bodyBytes.length} bytes)',
+        );
       }
 
       return response.bodyBytes;
     } catch (e) {
       if (e is ShadowAppException) rethrow;
-      throw NetworkException(
-        message: 'Download failed: $e',
-        originalError: e,
-      );
+      throw NetworkException(message: 'Download failed: $e', originalError: e);
     }
   }
 
   /// Get media metadata
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final metadata = await ShadowApp.media.getMetadata('media-123');
@@ -263,19 +254,14 @@ class MediaService {
   Future<MediaMetadata> getMetadata(String mediaId) async {
     final token = _getToken();
     if (token == null) {
-      throw AuthException(
-        message: 'Not authenticated',
-        originalError: null,
-      );
+      throw AuthException(message: 'Not authenticated', originalError: null);
     }
 
     try {
       final response = await http
           .get(
             Uri.parse('$serverUrl/api/media/metadata/$mediaId'),
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
+            headers: {'Authorization': 'Bearer $token'},
           )
           .timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
 

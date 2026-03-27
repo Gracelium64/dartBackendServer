@@ -188,8 +188,10 @@ const file = fileInput.files[0];
 const response = await client.uploadMedia({
   file: file,
   filename: "my-image.jpg", // optional
+  destinationCollection: "my-collection", // required: collection to associate media with
+  destinationDocId: "document-id", // required: document to associate media with
 });
-const mediaId = response.data.mediaId;
+const mediaId = response.data.id;
 
 // Download file
 const blob = await client.downloadMedia(mediaId);
@@ -265,7 +267,11 @@ const {
 // Usage
 const handleFileChange = async (e) => {
   const file = e.target.files[0];
-  const mediaId = await uploadMedia({ file });
+  const mediaId = await uploadMedia({
+    file,
+    destinationCollection: "my-collection", // required
+    destinationDocId: "document-id", // required
+  });
   console.log("Uploaded:", mediaId);
 };
 ```

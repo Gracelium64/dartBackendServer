@@ -22,8 +22,81 @@ import type {
   UploadMediaResponse,
   MediaMetadata,
   LogsResponse,
+  Collection,
+  User,
+  AuditLog,
+  AdminSqlResponse,
   ApiError,
 } from "./types";
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === "object" && value !== null) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function asNumber(value: unknown): number {
+  return typeof value === "number" ? value : 0;
+}
+
+function toDocument(raw: unknown): Document {
+  const rec = asRecord(raw);
+  return {
+    id: asString(rec.id),
+    collectionId: asString(rec.collectionId ?? rec.collection_id),
+    ownerId: asString(rec.ownerId ?? rec.owner_id),
+    data: asRecord(rec.data),
+    createdAt: asString(rec.createdAt ?? rec.created_at),
+    updatedAt: asString(rec.updatedAt ?? rec.updated_at),
+  };
+}
+
+function toCollection(raw: unknown): Collection {
+  const rec = asRecord(raw);
+  return {
+    id: asString(rec.id),
+    name: asString(rec.name),
+    ownerId: asString(rec.ownerId ?? rec.owner_id),
+    rules: asRecord(rec.rules),
+    createdAt: asString(rec.createdAt ?? rec.created_at),
+    updatedAt: asString(rec.updatedAt ?? rec.updated_at),
+  };
+}
+
+function toMediaMetadata(raw: unknown): MediaMetadata {
+  const rec = asRecord(raw);
+  return {
+    id: asString(rec.id),
+    documentId: asString(rec.documentId ?? rec.document_id),
+    fileName: asString(rec.fileName ?? rec.file_name),
+    mimeType: asString(rec.mimeType ?? rec.mime_type),
+    originalSize: asNumber(rec.originalSize ?? rec.original_size),
+    compressedSize: asNumber(rec.compressedSize ?? rec.compressed_size),
+    compressionAlgo: asString(rec.compressionAlgo ?? rec.compression_algo),
+    uploadedAt: asString(rec.uploadedAt ?? rec.uploaded_at),
+  };
+}
+
+function toAuditLog(raw: unknown): AuditLog {
+  const rec = asRecord(raw);
+  const status = asString(rec.status) === "success" ? "success" : "failed";
+  return {
+    id: asString(rec.id),
+    userId: asString(rec.userId ?? rec.user_id),
+    action: asString(rec.action),
+    resourceType: asString(rec.resourceType ?? rec.resource_type),
+    resourceId: asString(rec.resourceId ?? rec.resource_id),
+    status,
+    errorMessage: asString(rec.errorMessage ?? rec.error_message) || undefined,
+    details: asString(rec.details) || undefined,
+    timestamp: asString(rec.timestamp),
+  };
+}
 
 export class ShadowAppClient {
   private axiosInstance: AxiosInstance;
@@ -216,9 +289,9 @@ export class ShadowAppClient {
   ): Promise<Document> {
     const response = await this.axiosInstance.post<{
       success: boolean;
-      data: Document;
+      data: unknown;
     }>(`/api/collections/${collectionId}/documents`, request.data);
-    return response.data.data;
+    return toDocument(response.data.data);
   }
 
   /**
@@ -230,9 +303,9 @@ export class ShadowAppClient {
   ): Promise<Document> {
     const response = await this.axiosInstance.get<{
       success: boolean;
-      data: Document;
+      data: unknown;
     }>(`/api/collections/${collectionId}/documents/${documentId}`);
-    return response.data.data;
+    return toDocument(response.data.data);
   }
 
   /**
@@ -245,12 +318,12 @@ export class ShadowAppClient {
   ): Promise<Document> {
     const response = await this.axiosInstance.put<{
       success: boolean;
-      data: Document;
+      data: unknown;
     }>(
       `/api/collections/${collectionId}/documents/${documentId}`,
       request.data,
     );
-    return response.data.data;
+    return toDocument(response.data.data);
   }
 
   /**
@@ -272,10 +345,93 @@ export class ShadowAppClient {
     collectionId: string,
     params?: ListDocumentsParams,
   ): Promise<ListDocumentsResponse> {
-    const response = await this.axiosInstance.get<ListDocumentsResponse>(
-      `/api/collections/${collectionId}/documents`,
-      { params },
+    const response = await this.axiosInstance.get<{
+      success: boolean;
+      data: unknown[];
+      pagination: {
+        limit: number;
+        offset: number;
+        count: number;
+      };
+      timestamp?: string;
+    }>(`/api/collections/${collectionId}/documents`, { params });
+
+    return {
+      success: response.data.success,
+      data: response.data.data.map((item) => toDocument(item)),
+      pagination: response.data.pagination,
+      timestamp: response.data.timestamp,
+    };
+  }
+
+  /**
+   * List all users (admin only)
+   */
+  async listUsers(): Promise<User[]> {
+    const response = await this.axiosInstance.get<{
+      success: boolean;
+      data: unknown[];
+    }>("/api/users");
+
+    return response.data.data.map((item) => {
+      const user = asRecord(item);
+      return {
+        id: asString(user.id),
+        email: asString(user.email),
+        role: asString(user.role) === "admin" ? "admin" : "user",
+        createdAt: asString(user.createdAt ?? user.created_at) || undefined,
+      };
+    });
+  }
+
+  /**
+   * List all collections visible to the caller
+   */
+  async listCollections(): Promise<Collection[]> {
+    const response = await this.axiosInstance.get<{
+      success: boolean;
+      data: unknown[];
+    }>("/api/collections");
+
+    return response.data.data.map((item) => toCollection(item));
+  }
+
+  /**
+   * Create a collection
+   */
+  async createCollection(
+    name: string,
+    rules?: Record<string, unknown>,
+  ): Promise<Collection> {
+    const response = await this.axiosInstance.post<{
+      success: boolean;
+      data: unknown;
+    }>("/api/collections", { name, rules });
+
+    return toCollection(response.data.data);
+  }
+
+  /**
+   * Execute admin SQL (admin only)
+   */
+  async executeAdminSql(
+    sql: string,
+    options?: {
+      params?: unknown[];
+      maxRows?: number;
+      disableRowCap?: boolean;
+    },
+  ): Promise<AdminSqlResponse> {
+    const response = await this.axiosInstance.post<AdminSqlResponse>(
+      "/api/admin/sql-query",
+      {
+        sql,
+        params: options?.params ?? [],
+        max_rows: options?.maxRows,
+        disable_row_cap: options?.disableRowCap ?? false,
+      },
     );
+
     return response.data;
   }
 
@@ -286,21 +442,42 @@ export class ShadowAppClient {
    */
   async uploadMedia(request: UploadMediaRequest): Promise<UploadMediaResponse> {
     const formData = new FormData();
-    formData.append("file", request.file);
+    formData.append(
+      "file",
+      request.file,
+      request.filename ?? request.file.name,
+    );
+    formData.append("destination_collection", request.destinationCollection);
+    formData.append("destination_doc_id", request.destinationDocId);
     if (request.filename) {
       formData.append("filename", request.filename);
     }
 
-    const response = await this.axiosInstance.post<UploadMediaResponse>(
-      "/api/media/upload",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+    const response = await this.axiosInstance.post<{
+      success: boolean;
+      data: {
+        id: string;
+        original_size: number;
+        compressed_size: number;
+        compression_algo: string;
+      };
+      timestamp?: string;
+    }>("/api/media/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
       },
-    );
-    return response.data;
+    });
+
+    return {
+      success: response.data.success,
+      data: {
+        id: response.data.data.id,
+        originalSize: response.data.data.original_size,
+        compressedSize: response.data.data.compressed_size,
+        compressionAlgo: response.data.data.compression_algo,
+      },
+      timestamp: response.data.timestamp,
+    };
   }
 
   /**
@@ -322,9 +499,9 @@ export class ShadowAppClient {
   async getMediaMetadata(mediaId: string): Promise<MediaMetadata> {
     const response = await this.axiosInstance.get<{
       success: boolean;
-      data: MediaMetadata;
+      data: unknown;
     }>(`/api/media/metadata/${mediaId}`);
-    return response.data.data;
+    return toMediaMetadata(response.data.data);
   }
 
   /**
@@ -340,11 +517,17 @@ export class ShadowAppClient {
    * Get recent audit logs (admin only)
    */
   async getRecentLogs(limit?: number): Promise<LogsResponse> {
-    const response = await this.axiosInstance.get<LogsResponse>(
-      "/api/logs/recent",
-      { params: { limit } },
-    );
-    return response.data;
+    const response = await this.axiosInstance.get<{
+      success: boolean;
+      data: unknown[];
+      count: number;
+    }>("/api/logs/recent", { params: { limit } });
+
+    return {
+      success: response.data.success,
+      data: response.data.data.map((item) => toAuditLog(item)),
+      count: response.data.count,
+    };
   }
 
   // ==================== Health ====================

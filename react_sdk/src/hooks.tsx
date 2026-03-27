@@ -190,8 +190,8 @@ export function useDocuments(
     try {
       const response = await client.listDocuments(collectionId, params);
       if (response.success) {
-        setDocuments(response.data.documents);
-        setTotal(response.data.total);
+        setDocuments(response.data);
+        setTotal(response.pagination?.count ?? response.data.length);
       }
     } catch (err) {
       setError(err as ApiError);
@@ -272,7 +272,7 @@ export function useMediaUpload(client: ShadowAppClient): UseMediaUploadReturn {
       try {
         const response = await client.uploadMedia(request);
         setProgress(100);
-        return response.data.mediaId;
+        return response.data.id;
       } catch (err) {
         setError(err as ApiError);
         throw err;

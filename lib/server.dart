@@ -75,7 +75,7 @@ class ShadowAppServer {
     print('''
 ✓ Database initialized at ${globalConfig.dbPath}
 ✓ Listening on http://$host:$port
-✓ Admin key: YOUR_GENERATED_ADMIN_KEY_HERE (save for admin console)
+✓ Admin key: ${globalConfig.adminApiKey}
 ✓ Log level: ${globalConfig.logLevel}
 ✓ CORS enabled: ${globalConfig.enableCors}
 
@@ -145,12 +145,17 @@ Press Ctrl+C to stop the server gracefully.
         // not always contain claims here. Derive user ID from JWT when present.
         String? authenticatedUserId = claims?['sub']?.toString();
         final authHeader = request.headers['authorization'];
+        final adminKeyHeader = request.headers['x-admin-key'];
         if ((authenticatedUserId == null || authenticatedUserId.isEmpty) &&
             authHeader != null &&
             authHeader.startsWith('Bearer ')) {
           final token = authHeader.substring(7);
           final tokenClaims = AuthService.validateToken(token);
           authenticatedUserId = tokenClaims?['sub']?.toString();
+        }
+        if ((authenticatedUserId == null || authenticatedUserId.isEmpty) &&
+            _isValidAdminKey(adminKeyHeader)) {
+          authenticatedUserId = 'admin_console';
         }
 
         final userId =
@@ -224,6 +229,13 @@ Press Ctrl+C to stop the server gracefully.
           return innerHandler(request);
         }
 
+        // Admin key is an alternative machine/operator credential for CLI tooling.
+        final adminKey = request.headers['x-admin-key'];
+        if (_isValidAdminKey(adminKey)) {
+          return innerHandler(
+              request.change(context: {'claims': _adminKeyClaims()}));
+        }
+
         // Check for Authorization header
         final authHeader = request.headers['authorization'];
         if (authHeader == null || !authHeader.startsWith('Bearer ')) {
@@ -238,6 +250,23 @@ Press Ctrl+C to stop the server gracefully.
 
         return innerHandler(request.change(context: {'claims': claims}));
       };
+    };
+  }
+
+  bool _isValidAdminKey(String? candidate) {
+    final expected = globalConfig.adminApiKey.trim();
+    final provided = (candidate ?? '').trim();
+    return expected.isNotEmpty && provided.isNotEmpty && provided == expected;
+  }
+
+  Map<String, dynamic> _adminKeyClaims() {
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    return {
+      'sub': 'admin_console',
+      'email': 'admin_console@shadow.local',
+      'role': 'admin',
+      'auth': 'admin_key',
+      'iat': nowSec,
     };
   }
 

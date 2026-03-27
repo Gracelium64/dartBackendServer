@@ -81,34 +81,42 @@ export interface ListDocumentsParams {
 
 export interface ListDocumentsResponse {
   success: boolean;
-  data: {
-    documents: Document[];
-    total: number;
+  data: Document[];
+  pagination: {
     limit: number;
     offset: number;
+    count: number;
   };
+  timestamp?: string;
 }
 
 export interface MediaMetadata {
   id: string;
-  uploaderId: string;
-  filename: string;
+  documentId: string;
+  fileName: string;
   mimeType: string;
-  size: number;
+  originalSize: number;
+  compressedSize: number;
+  compressionAlgo: string;
   uploadedAt: string;
 }
 
 export interface UploadMediaRequest {
   file: File;
   filename?: string;
+  destinationCollection: string;
+  destinationDocId: string;
 }
 
 export interface UploadMediaResponse {
   success: boolean;
   data: {
-    mediaId: string;
-    metadata: MediaMetadata;
+    id: string;
+    originalSize: number;
+    compressedSize: number;
+    compressionAlgo: string;
   };
+  timestamp?: string;
 }
 
 export interface AuditLog {
@@ -125,9 +133,29 @@ export interface AuditLog {
 
 export interface LogsResponse {
   success: boolean;
-  data: {
-    logs: AuditLog[];
+  data: AuditLog[];
+  count: number;
+}
+
+export interface AdminSqlStatementResult {
+  statement_index: number;
+  statement_type: string;
+  rows: Array<Record<string, unknown>>;
+  row_count: number;
+  row_cap_applied: boolean;
+}
+
+export interface AdminSqlResponse {
+  success: boolean;
+  data: AdminSqlStatementResult[];
+  meta: {
+    statement_count: number;
+    total_rows: number;
+    max_rows: number | null;
+    disable_row_cap: boolean;
+    max_statements: number;
   };
+  timestamp: string;
 }
 
 export interface ApiError {

@@ -54,6 +54,8 @@ export type {
   UploadMediaResponse,
   AuditLog,
   LogsResponse,
+  AdminSqlResponse,
+  AdminSqlStatementResult,
   ApiError,
   ApiResponse,
 } from "./types";

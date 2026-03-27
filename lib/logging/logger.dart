@@ -159,7 +159,7 @@ class ServerLogger {
       print('[LOG] Log file rotated');
 
       // Cleanup old logs
-      _cleanupOldLogs();
+      await _cleanupOldLogs();
     }
   }
 

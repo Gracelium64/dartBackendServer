@@ -16,6 +16,7 @@ class ServerConfig {
   late String dbPath;
   late String jwtSecret;
   late int jwtExpiryHours;
+  late String adminApiKey;
   late String logFilePath;
   late int logRetentionDays;
   late String logLevel;
@@ -73,6 +74,9 @@ class ServerConfig {
     // Auth settings
     jwtSecret = auth?['jwt_secret'] as String? ?? _generateRandomSecret();
     jwtExpiryHours = auth?['jwt_expiry_hours'] as int? ?? 24;
+    adminApiKey = auth?['admin_api_key'] as String? ??
+        Platform.environment['SHADOW_ADMIN_KEY'] ??
+        'change-me-admin-key';
 
     // Email settings (Gmail)
     gmailEmail = email?['email'] as String? ?? '';
@@ -86,6 +90,8 @@ class ServerConfig {
     dbPath = 'data/shadow_app.db';
     jwtSecret = _generateRandomSecret();
     jwtExpiryHours = 24;
+    adminApiKey =
+        Platform.environment['SHADOW_ADMIN_KEY'] ?? 'change-me-admin-key';
     logFilePath = 'data/logs';
     logRetentionDays = 7;
     logLevel = 'INFO';
@@ -131,6 +137,7 @@ ServerConfig:
   Server: $serverHost:$serverPort
   Database: $dbPath (WAL: $enableWal)
   JWT Secret: ${jwtSecret.substring(0, 10)}... (expires in $jwtExpiryHours hours)
+  Admin API Key: ${adminApiKey == 'change-me-admin-key' ? 'default (change this)' : 'configured'}
   Logging: $logLevel (retention: $logRetentionDays days, path: $logFilePath)
   CORS: $enableCors
   Gmail: ${gmailEmail.isNotEmpty ? 'configured' : 'not configured'}
