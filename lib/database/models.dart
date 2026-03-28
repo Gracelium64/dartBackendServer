@@ -7,6 +7,16 @@
 
 import 'package:uuid/uuid.dart';
 
+/// Safely coerces a SQLite value (int, String, double, or null) to int.
+/// The sqlite3 package on Linux can return INTEGER columns as String.
+int _toInt(dynamic value, [int fallback = 0]) {
+  if (value == null) return fallback;
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? fallback;
+  return fallback;
+}
+
 /// User model - represents a user account
 class User {
   final String id;
@@ -45,9 +55,9 @@ class User {
       passwordHash: json['password_hash'] as String,
       role: json['role'] as String? ?? 'user',
       createdAt:
-          DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int? ?? 0),
+          DateTime.fromMillisecondsSinceEpoch(_toInt(json['created_at'])),
       updatedAt:
-          DateTime.fromMillisecondsSinceEpoch(json['updated_at'] as int? ?? 0),
+          DateTime.fromMillisecondsSinceEpoch(_toInt(json['updated_at'])),
     );
   }
 }
@@ -101,9 +111,9 @@ class Collection {
             'public_read': false,
           },
       createdAt:
-          DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int? ?? 0),
+          DateTime.fromMillisecondsSinceEpoch(_toInt(json['created_at'])),
       updatedAt:
-          DateTime.fromMillisecondsSinceEpoch(json['updated_at'] as int? ?? 0),
+          DateTime.fromMillisecondsSinceEpoch(_toInt(json['updated_at'])),
     );
   }
 }
@@ -144,9 +154,9 @@ class Document {
       ownerId: json['owner_id'] as String,
       data: json['data'] as Map<String, dynamic>? ?? {},
       createdAt:
-          DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int? ?? 0),
+          DateTime.fromMillisecondsSinceEpoch(_toInt(json['created_at'])),
       updatedAt:
-          DateTime.fromMillisecondsSinceEpoch(json['updated_at'] as int? ?? 0),
+          DateTime.fromMillisecondsSinceEpoch(_toInt(json['updated_at'])),
     );
   }
 }
@@ -207,12 +217,12 @@ class MediaBlob {
       documentId: json['document_id'] as String,
       fileName: json['file_name'] as String,
       mimeType: json['mime_type'] as String,
-      originalSize: json['original_size'] as int,
-      compressedSize: json['compressed_size'] as int,
+      originalSize: _toInt(json['original_size']),
+      compressedSize: _toInt(json['compressed_size']),
       compressionAlgo: json['compression_algo'] as String,
       blobData: blobDataList,
       createdAt:
-          DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int? ?? 0),
+          DateTime.fromMillisecondsSinceEpoch(_toInt(json['created_at'])),
     );
   }
 }
@@ -266,8 +276,7 @@ class AuditLog {
       status: json['status'] as String,
       errorMessage: json['error_message'] as String?,
       details: json['details'] as String?,
-      timestamp:
-          DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int? ?? 0),
+      timestamp: DateTime.fromMillisecondsSinceEpoch(_toInt(json['timestamp'])),
     );
   }
 
