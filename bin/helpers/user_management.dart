@@ -82,7 +82,22 @@ Future<void> addUser(DatabaseManager database) async {
     }
 
     TerminalUI.printSuccess('User created: $email');
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'CREATE',
+      resourceType: 'user',
+      resourceId: email,
+      status: 'success',
+    ));
   } catch (e) {
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'CREATE',
+      resourceType: 'user',
+      resourceId: email,
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
     TerminalUI.printError('Failed to create user: $e');
   }
 }
@@ -112,7 +127,22 @@ Future<void> deleteUser(DatabaseManager database) async {
   try {
     await database.deleteUser(user.id);
     TerminalUI.printSuccess('User deleted: ${user.email}');
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'DELETE',
+      resourceType: 'user',
+      resourceId: user.id,
+      status: 'success',
+    ));
   } catch (e) {
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'DELETE',
+      resourceType: 'user',
+      resourceId: user.id,
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
     TerminalUI.printError('Failed to delete user: $e');
   }
 }
@@ -145,7 +175,23 @@ Future<void> changeUserRole(DatabaseManager database) async {
   try {
     await database.updateUserRole(user.id, newRole);
     TerminalUI.printSuccess('Role updated: ${user.email} → $newRole');
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'UPDATE',
+      resourceType: 'user_role',
+      resourceId: user.id,
+      status: 'success',
+      details: '${user.role} → $newRole',
+    ));
   } catch (e) {
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'UPDATE',
+      resourceType: 'user_role',
+      resourceId: user.id,
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
     TerminalUI.printError('Failed to update role: $e');
   }
 }

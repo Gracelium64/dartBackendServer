@@ -4,7 +4,6 @@
 import 'dart:convert';
 import 'package:shadow_app_backend/database/db_manager.dart';
 import 'package:shadow_app_backend/database/models.dart';
-import 'package:shadow_app_backend/logging/logger.dart';
 import 'terminal_ui.dart';
 import 'formatting.dart';
 
@@ -14,7 +13,7 @@ Future<void> listCollections(DatabaseManager database) async {
 
   if (collections.isEmpty) {
     TerminalUI.printWarning('No collections found');
-    await logger.logAction(AuditLog(
+    await database.logAction(AuditLog(
       userId: 'admin_console',
       action: 'LIST',
       resourceType: 'collection',
@@ -38,7 +37,7 @@ Future<void> listCollections(DatabaseManager database) async {
     rows,
   );
   TerminalUI.printSuccess('Total collections: ${collections.length}');
-  await logger.logAction(AuditLog(
+  await database.logAction(AuditLog(
     userId: 'admin_console',
     action: 'LIST',
     resourceType: 'collection',
@@ -72,7 +71,22 @@ Future<void> createCollection(DatabaseManager database) async {
     );
     await database.createCollection(collection);
     TerminalUI.printSuccess('Collection created: $name');
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'CREATE',
+      resourceType: 'collection',
+      resourceId: collection.id,
+      status: 'success',
+    ));
   } catch (e) {
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'CREATE',
+      resourceType: 'collection',
+      resourceId: 'unknown',
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
     TerminalUI.printError('Failed to create collection: $e');
   }
 }
@@ -116,7 +130,22 @@ Future<void> createDocument(DatabaseManager database) async {
 
     final created = await database.createDocument(doc);
     TerminalUI.printSuccess('Document created with ID: ${created.id}');
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'CREATE',
+      resourceType: 'document',
+      resourceId: created.id,
+      status: 'success',
+    ));
   } catch (e) {
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'CREATE',
+      resourceType: 'document',
+      resourceId: 'unknown',
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
     TerminalUI.printError('Failed to create document: $e');
   }
 }
@@ -131,7 +160,7 @@ Future<void> readDocument(DatabaseManager database) async {
     final doc = await database.getDocument(docId);
     if (doc == null) {
       TerminalUI.printError('Document not found');
-      await logger.logAction(AuditLog(
+      await database.logAction(AuditLog(
         userId: 'admin_console',
         action: 'READ',
         resourceType: 'document',
@@ -151,7 +180,7 @@ Future<void> readDocument(DatabaseManager database) async {
     print('Data:');
     print(JsonEncoder.withIndent('  ').convert(doc.data));
     print('=' * 70);
-    await logger.logAction(AuditLog(
+    await database.logAction(AuditLog(
       userId: 'admin_console',
       action: 'READ',
       resourceType: 'document',
@@ -159,7 +188,7 @@ Future<void> readDocument(DatabaseManager database) async {
       status: 'success',
     ));
   } catch (e) {
-    await logger.logAction(AuditLog(
+    await database.logAction(AuditLog(
       userId: 'admin_console',
       action: 'READ',
       resourceType: 'document',
@@ -201,7 +230,22 @@ Future<void> updateDocument(DatabaseManager database) async {
 
     await database.updateDocument(updatedDoc);
     TerminalUI.printSuccess('Document updated');
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'UPDATE',
+      resourceType: 'document',
+      resourceId: docId,
+      status: 'success',
+    ));
   } catch (e) {
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'UPDATE',
+      resourceType: 'document',
+      resourceId: docId,
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
     TerminalUI.printError('Failed to update document: $e');
   }
 }
@@ -220,7 +264,22 @@ Future<void> deleteDocument(DatabaseManager database) async {
   try {
     await database.deleteDocument(docId);
     TerminalUI.printSuccess('Document deleted');
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'DELETE',
+      resourceType: 'document',
+      resourceId: docId,
+      status: 'success',
+    ));
   } catch (e) {
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'DELETE',
+      resourceType: 'document',
+      resourceId: docId,
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
     TerminalUI.printError('Failed to delete document: $e');
   }
 }
@@ -242,7 +301,7 @@ Future<void> listDocuments(DatabaseManager database) async {
 
     if (docs.isEmpty) {
       TerminalUI.printWarning('No documents found');
-      await logger.logAction(AuditLog(
+      await database.logAction(AuditLog(
         userId: 'admin_console',
         action: 'LIST',
         resourceType: 'document',
@@ -267,7 +326,7 @@ Future<void> listDocuments(DatabaseManager database) async {
       rows,
     );
     TerminalUI.printSuccess('Found ${docs.length} documents');
-    await logger.logAction(AuditLog(
+    await database.logAction(AuditLog(
       userId: 'admin_console',
       action: 'LIST',
       resourceType: 'document',
@@ -275,7 +334,7 @@ Future<void> listDocuments(DatabaseManager database) async {
       status: 'success',
     ));
   } catch (e) {
-    await logger.logAction(AuditLog(
+    await database.logAction(AuditLog(
       userId: 'admin_console',
       action: 'LIST',
       resourceType: 'document',
