@@ -19,10 +19,11 @@ import 'package:http/http.dart' as http;
 
 class ShadowAppClient {
   final String serverUrl;
+  final int timeoutSeconds;
   String? _token;
   String? _adminKey;
 
-  ShadowAppClient(this.serverUrl);
+  ShadowAppClient(this.serverUrl, {this.timeoutSeconds = 30});
 
   /// Set authentication token
   void setToken(String token) => _token = token;
@@ -57,7 +58,7 @@ class ShadowAppClient {
       switch (method.toUpperCase()) {
         case 'GET':
           response = await http.get(uri, headers: headers).timeout(
-                Duration(seconds: 10),
+                Duration(seconds: timeoutSeconds),
               );
           break;
         case 'POST':
@@ -67,7 +68,7 @@ class ShadowAppClient {
                 headers: headers,
                 body: body != null ? jsonEncode(body) : null,
               )
-              .timeout(Duration(seconds: 10));
+              .timeout(Duration(seconds: timeoutSeconds));
           break;
         case 'PUT':
           response = await http
@@ -76,18 +77,19 @@ class ShadowAppClient {
                 headers: headers,
                 body: body != null ? jsonEncode(body) : null,
               )
-              .timeout(Duration(seconds: 10));
+              .timeout(Duration(seconds: timeoutSeconds));
           break;
         case 'DELETE':
           response = await http
               .delete(uri, headers: headers)
-              .timeout(Duration(seconds: 10));
+              .timeout(Duration(seconds: timeoutSeconds));
           break;
         default:
           throw Exception('Unsupported HTTP method: $method');
       }
     } on TimeoutException catch (_) {
-      print('❌ Request timeout: Server did not respond within 10 seconds');
+      print(
+          '❌ Request timeout: Server did not respond within $timeoutSeconds seconds');
       exit(1);
     } on SocketException catch (e) {
       print('❌ Connection error: ${e.message}');
@@ -480,6 +482,12 @@ Future<void> main(List<String> args) async {
       valueHelp: 'url',
     )
     ..addOption(
+      'timeout',
+      help: 'HTTP request timeout in seconds (default: 30)',
+      defaultsTo: '30',
+      valueHelp: 'seconds',
+    )
+    ..addOption(
       'token',
       abbr: 't',
       help:
@@ -620,7 +628,14 @@ Future<void> main(List<String> args) async {
     exit(1);
   }
 
-  final client = ShadowAppClient(serverUrl);
+  final timeoutSeconds = int.tryParse(results['timeout'] as String? ?? '30');
+  if (timeoutSeconds == null || timeoutSeconds <= 0) {
+    print('❌ Error: --timeout must be a positive integer\n');
+    printUsage(parser);
+    exit(1);
+  }
+
+  final client = ShadowAppClient(serverUrl, timeoutSeconds: timeoutSeconds);
 
   // Set admin key if provided
   if (results['admin-key'] != null) {

@@ -821,7 +821,17 @@ class DatabaseManager {
   Future<AuditLog> logAction(AuditLog entry) async {
     try {
       final stmt = _db.prepare('''
-        INSERT INTO audit_log 
+        INSERT INTO audit_log (
+          id,
+          user_id,
+          action,
+          resource_type,
+          resource_id,
+          status,
+          error_message,
+          details,
+          timestamp
+        )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ''');
       stmt.execute([
