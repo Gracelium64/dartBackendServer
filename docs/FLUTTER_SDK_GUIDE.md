@@ -81,7 +81,7 @@ dependencies:
     sdk: flutter
   shadow_app_backend:
     git:
-      url: https://github.com/miranda6424/dartBackendServer.git
+      url: https://github.com/Gracelium64/dartBackendServer.git
       path: flutter_sdk
 ```
 
@@ -1817,7 +1817,7 @@ See the complete example app in this guide (sections above) for a fully function
 
 For issues, questions, or contributions:
 
-- **Repository:** miranda6424/dartBackendServer
+- **Repository:** Gracelium64/dartBackendServer
 - **Branch:** devGrace (development)
 - **Backend Version:** 0.1.0
 - **SDK Version:** 0.1.0

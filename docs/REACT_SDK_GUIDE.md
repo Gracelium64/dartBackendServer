@@ -1413,7 +1413,7 @@ See the React SDK README at `/react_sdk/README.md` for additional code examples.
 
 For issues, questions, or contributions:
 
-- **Repository:** miranda6424/dartBackendServer
+- **Repository:** Gracelium64/dartBackendServer
 - **Branch:** devGrace (development)
 - **Backend Version:** 0.1.0
 - **SDK Version:** 0.1.0

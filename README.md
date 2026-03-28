@@ -1,4 +1,6 @@
-# Shadow App Backend Server`
+# Shadow App Backend Server
+## see cli_client/bin/basics.rtf for starting point usage example for setting up server and client ##
+
 
 A **Dart-only learning backend server** for Flutter developers. Write your own backend, understand how it works, and deploy with confidence.
 

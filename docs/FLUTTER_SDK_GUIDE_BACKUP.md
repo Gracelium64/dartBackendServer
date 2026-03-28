@@ -41,6 +41,7 @@ The Shadow App Flutter SDK is a Dart-native client library for integrating with 
 ### Why Use the Flutter SDK?
 
 For **Flutter developers**, this SDK provides:
+
 - Native Dart code with no JavaScript bridge
 - Singleton pattern similar to Firebase
 - Seamless integration with Flutter state management
@@ -48,6 +49,7 @@ For **Flutter developers**, this SDK provides:
 - Similar to Firebase, but with complete backend transparency and learning value
 
 For **Mobile developers**, this SDK provides:
+
 - Native mobile performance
 - Automatic image compression
 - Offline-first capabilities
@@ -78,7 +80,7 @@ dependencies:
     sdk: flutter
   shadow_app_backend:
     git:
-      url: https://github.com/miranda6424/dartBackendServer.git
+      url: https://github.com/Gracelium64/dartBackendServer.git
       path: flutter_sdk
 ```
 
@@ -117,13 +119,13 @@ import 'package:shadow_app_backend/shadow_app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Shadow App SDK
   await ShadowApp.initialize(
     serverUrl: 'http://192.168.1.100:8080',  // Your backend server URL
     enableOfflineMode: true,                 // Optional: enable local caching
   );
-  
+
   runApp(const MyApp());
 }
 
@@ -159,15 +161,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = await ShadowApp.auth.login(
         email: _emailController.text,
         password: _passwordController.text,
       );
-      
+
       print('Logged in as: ${user.email}');
-      
+
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/home');
       }
@@ -263,7 +265,7 @@ class _NotesScreenState extends State<NotesScreen> {
       'content': 'Enter your content here...',
       'createdAt': DateTime.now().toIso8601String(),
     });
-    
+
     setState(() => _notes.add(newNote));
   }
 
@@ -385,11 +387,11 @@ class ShadowAppConfig {
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await ShadowApp.initialize(
     serverUrl: 'http://localhost:8080',
   );
-  
+
   runApp(const MyApp());
 }
 ```
@@ -399,17 +401,17 @@ void main() async {
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await ShadowApp.initialize(
     serverUrl: const String.fromEnvironment('API_URL',
         defaultValue: 'https://api.myapp.com'),
     enableOfflineMode: true,
   );
-  
+
   // Configure advanced options
   ShadowAppConfig.networkTimeout = 60; // 60 seconds for slow networks
   ShadowAppConfig.mediaCompressionQuality = 0.9; // Higher quality
-  
+
   runApp(const MyApp());
 }
 ```
@@ -419,16 +421,16 @@ void main() async {
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await ShadowApp.initialize(
     serverUrl: 'http://192.168.1.100:8080', // Local network IP
     enableOfflineMode: false, // Disable caching for testing
   );
-  
+
   // Enable debug logging
   ShadowAppConfig.enableDebugLogging = true;
   ShadowAppConfig.networkTimeout = 5; // Fast failure for development
-  
+
   runApp(const MyApp());
 }
 ```
@@ -465,7 +467,7 @@ void main() async {
 
 Create a new user account:
 
-```dart
+````dart
 class SignupScreen extends StatefulWidget {
   const SignupScreen({Key? key}) : super(key: key);
 
@@ -578,7 +580,7 @@ Future<void> logoutUser() async {
   await ShadowApp.auth.logout();
   print('Logged out');
 }
-```
+````
 
 #### Check Authentication Status
 
@@ -612,6 +614,7 @@ print('Data: ${newNote.data}');
 ```
 
 **Output:**
+
 ```
 Document created with ID: doc-a1b2c3d4e5f6
 Data: {
@@ -711,7 +714,7 @@ Future<void> uploadProfileImage() async {
         destinationDocId: 'user-xyz123',  // Your user ID
         mediaType: 'image/jpeg',
       );
-      
+
       print('Uploaded: ${media.id}');
       print('Original size: ${media.originalSize} bytes');
       print('Compressed size: ${media.compressedSize} bytes');
@@ -724,6 +727,7 @@ Future<void> uploadProfileImage() async {
 ```
 
 The SDK automatically:
+
 - Compresses the image (JPEG to optimized JPEG, PNG to compressed PNG)
 - Uploads to server
 - Stores in the specified document
@@ -735,12 +739,12 @@ The SDK automatically:
 Future<void> downloadProfileImage(String mediaId) async {
   try {
     final bytes = await ShadowApp.media.download(mediaId);
-    
+
     // Save to local file
     final appDir = await getApplicationDocumentsDirectory();
     final file = File('${appDir.path}/profile_image.jpg');
     await file.writeAsBytes(bytes);
-    
+
     print('Downloaded and saved: ${file.path}');
   } catch (e) {
     print('Download failed: $e');
@@ -795,9 +799,11 @@ Behind the scenes:
    - Token is a signed, encrypted blob that proves your identity
 
 3. **JWT Token**:
+
    ```
    eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFiYzEyMyIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsImV4cCI6MTYwMjM5NjU0N30.SflKxwRJSmYq...
    ```
+
    - **Header**: Algorithm (RS256)
    - **Payload**: User ID, email, expiration time
    - **Signature**: Cryptographic proof server created this token
@@ -808,6 +814,7 @@ Behind the scenes:
    ```
    Authorization: Bearer eyJhbGc...
    ```
+
    - Server validates signature and expiration
    - If valid, processes request as that user
    - If invalid/expired, returns 401 Unauthorized
@@ -815,6 +822,7 @@ Behind the scenes:
 ### How CRUD Works
 
 1. **Create**: POST to `/api/collections/{collectionId}/documents`
+
    ```
    Request body: { "title": "My Note", "content": "..." }
    Response: { "id": "doc-xyz", "data": { ... } }
@@ -826,6 +834,7 @@ Behind the scenes:
    - Returns 200 OK with document data if allowed
 
 3. **Update**: PUT `/api/collections/{collectionId}/documents/{docId}`
+
    ```
    Request body: { "title": "Updated" }
    Response: { "id": "doc-xyz", "data": { ... } }
@@ -868,8 +877,8 @@ class NotesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Notes App',
-      home: ShadowApp.auth.isLoggedIn 
-        ? const NotesScreen() 
+      home: ShadowApp.auth.isLoggedIn
+        ? const NotesScreen()
         : const LoginScreen(),
     );
   }

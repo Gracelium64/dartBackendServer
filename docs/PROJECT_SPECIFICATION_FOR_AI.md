@@ -5,7 +5,7 @@
 **Project Version:** 0.1.0  
 **Language:** Dart  
 **Framework:** Shelf (HTTP server)  
-**Repository:** miranda6424/dartBackendServer  
+**Repository:** Gracelium64/dartBackendServer  
 **Branch:** devGrace (development)  
 **Date:** March 8, 2026
 
@@ -2314,5 +2314,5 @@ By following this specification, an AI learning program can create effective edu
 
 **License:** MIT  
 **Maintainers:** ShadowApp Team  
-**Repository:** miranda6424/dartBackendServer  
+**Repository:** Gracelium64/dartBackendServer  
 **Branch:** devGrace

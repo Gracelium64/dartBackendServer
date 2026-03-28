@@ -421,7 +421,7 @@ MIT
 
 For issues and questions, please visit:
 
-- GitHub: https://github.com/miranda6424/dartBackendServer
+- GitHub: https://github.com/Gracelium64/dartBackendServer
 - Documentation: https://shadowapp.dev/docs
 
 ## Changelog
