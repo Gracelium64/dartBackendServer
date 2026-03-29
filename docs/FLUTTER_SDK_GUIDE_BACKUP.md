@@ -1,7 +1,7 @@
 # Shadow App Backend - Flutter SDK Guide
 
 **Version:** 0.1.0  
-**Package:** `shadow_app_backend_flutter`  
+**Package:** `shadow_app_backend`  
 **License:** MIT
 
 ---
@@ -811,6 +811,7 @@ Behind the scenes:
 4. **Token Storage**: SDK stores token locally in `SharedPreferences` (Android) or `Keychain` (iOS)
 
 5. **Token Usage**: Every API request includes the token in the `Authorization` header:
+
    ```
    Authorization: Bearer eyJhbGc...
    ```

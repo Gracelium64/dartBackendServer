@@ -1,7 +1,7 @@
 # Shadow App Backend - Flutter SDK Guide
 
 **Version:** 0.1.0  
-**Package:** `shadow_app_backend_flutter`  
+**Package:** `shadow_app_backend`  
 **License:** MIT
 
 ---

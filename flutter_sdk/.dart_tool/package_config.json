@@ -344,7 +344,7 @@
       "languageVersion": "3.8"
     },
     {
-      "name": "shadow_app_backend_flutter",
+      "name": "shadow_app_backend",
       "rootUri": "../",
       "packageUri": "lib/",
       "languageVersion": "3.0"

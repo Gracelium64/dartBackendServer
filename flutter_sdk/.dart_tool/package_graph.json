@@ -1,10 +1,10 @@
 {
   "roots": [
-    "shadow_app_backend_flutter"
+    "shadow_app_backend"
   ],
   "packages": [
     {
-      "name": "shadow_app_backend_flutter",
+      "name": "shadow_app_backend",
       "version": "0.1.0",
       "dependencies": [
         "dio",

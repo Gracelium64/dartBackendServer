@@ -1,13 +1,12 @@
-name: shadow_app_backend_flutter
+name: shadow_app_backend
 description: >
   Flutter SDK for Shadow App Backend.
   Simple, intuitive CRUD operations and authentication for Flutter apps.
   Provides local JSON document storage with optional server sync.
 version: 0.1.0
-
 environment:
-  sdk: '>=3.0.0 <4.0.0'
-  flutter: '>=3.0.0'
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.0.0"
 
 dependencies:
   flutter:
