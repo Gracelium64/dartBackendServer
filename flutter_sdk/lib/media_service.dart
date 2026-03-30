@@ -56,8 +56,8 @@ class MediaMetadata {
   });
 
   factory MediaMetadata.fromJson(Map<String, dynamic> json) {
-    final rawTimestamp = (json['uploaded_at'] ?? json['created_at'])
-        ?.toString();
+    final rawTimestamp =
+        (json['uploaded_at'] ?? json['created_at'])?.toString();
     return MediaMetadata(
       id: json['id'] as String,
       fileName: json['file_name'] as String,
@@ -67,7 +67,7 @@ class MediaMetadata {
       compressionAlgo: json['compression_algo'] as String,
       createdAt: rawTimestamp != null
           ? DateTime.tryParse(rawTimestamp) ??
-                DateTime.fromMillisecondsSinceEpoch(0)
+              DateTime.fromMillisecondsSinceEpoch(0)
           : DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
@@ -121,27 +121,26 @@ class MediaService {
 
     try {
       // Create multipart request
-      final request =
-          http.MultipartRequest(
-              'POST',
-              Uri.parse('$serverUrl/api/media/upload'),
-            )
-            ..headers['Authorization'] = 'Bearer $token'
-            ..fields['destination_collection'] = destinationCollection
-            ..fields['destination_doc_id'] = destinationDocId
-            ..files.add(
-              http.MultipartFile.fromBytes(
-                'file',
-                fileBytes,
-                filename: fileName,
-              ),
-            );
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$serverUrl/api/media/upload'),
+      )
+        ..headers['Authorization'] = 'Bearer $token'
+        ..fields['destination_collection'] = destinationCollection
+        ..fields['destination_doc_id'] = destinationDocId
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            fileBytes,
+            filename: fileName,
+          ),
+        );
 
       final streamedResponse = await request.send().timeout(
-        Duration(
-          seconds: ShadowAppConfig.networkTimeout * 2,
-        ), // Longer for uploads
-      );
+            Duration(
+              seconds: ShadowAppConfig.networkTimeout * 2,
+            ), // Longer for uploads
+          );
 
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -202,12 +201,10 @@ class MediaService {
     }
 
     try {
-      final response = await http
-          .get(
-            Uri.parse('$serverUrl/api/media/download/$mediaId'),
-            headers: {'Authorization': 'Bearer $token'},
-          )
-          .timeout(Duration(seconds: ShadowAppConfig.networkTimeout * 2));
+      final response = await http.get(
+        Uri.parse('$serverUrl/api/media/download/$mediaId'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(Duration(seconds: ShadowAppConfig.networkTimeout * 2));
 
       if (response.statusCode == 404) {
         throw ShadowAppException(
@@ -258,12 +255,10 @@ class MediaService {
     }
 
     try {
-      final response = await http
-          .get(
-            Uri.parse('$serverUrl/api/media/metadata/$mediaId'),
-            headers: {'Authorization': 'Bearer $token'},
-          )
-          .timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
+      final response = await http.get(
+        Uri.parse('$serverUrl/api/media/metadata/$mediaId'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
 
       if (response.statusCode == 404) {
         throw ShadowAppException(

@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:shadow_app_backend/database/db_manager.dart';
 import 'package:shadow_app_backend/database/models.dart';
+import 'package:shadow_app_backend/auth/auth_service.dart';
 
 /// Raw CRUD REPL - Read-Eval-Print Loop for direct database commands
 Future<void> startCrudRepl(DatabaseManager database) async {
@@ -202,17 +203,57 @@ Future<void> _handleCreate(
         final password = args[2];
         final role = args.length > 3 ? args[3].toLowerCase() : 'user';
 
-        final user = User(email: email, passwordHash: password, role: role);
-        await database.createUser(user);
-        await database.logAction(AuditLog(
-          userId: 'admin_console',
-          action: 'CREATE',
-          resourceType: 'user',
-          resourceId: user.id,
-          status: 'success',
-          details: 'CREATE USER $email $role',
-        ));
-        print('✓ User created: ${user.email} (ID: ${user.id.substring(0, 8)})');
+        // Use AuthService.signup so password hashing and validation are centralized
+        try {
+          final result = await AuthService.signup(email, password);
+
+          if (result['success'] != true) {
+            await database.logAction(AuditLog(
+              userId: 'admin_console',
+              action: 'CREATE',
+              resourceType: 'user',
+              resourceId: email,
+              status: 'failed',
+              errorMessage: result['error']?.toString(),
+              details: 'CREATE USER $email $role',
+            ));
+            print(
+                '❌ Failed to create user: ${result['error'] ?? 'Unknown error'}');
+          } else {
+            // If role is not default 'user', update it
+            if (role.isNotEmpty && role != 'user') {
+              final createdUser = await database.getUserByEmail(email);
+              if (createdUser != null) {
+                await database.updateUserRole(createdUser.id, role);
+              }
+            }
+
+            final createdUser = await database.getUserByEmail(email);
+            final createdId = createdUser?.id ?? 'unknown';
+
+            await database.logAction(AuditLog(
+              userId: 'admin_console',
+              action: 'CREATE',
+              resourceType: 'user',
+              resourceId: createdId,
+              status: 'success',
+              details: 'CREATE USER $email $role',
+            ));
+
+            print('✓ User created: $email (ID: ${createdId.substring(0, 8)})');
+          }
+        } catch (e) {
+          await database.logAction(AuditLog(
+            userId: 'admin_console',
+            action: 'CREATE',
+            resourceType: 'user',
+            resourceId: email,
+            status: 'failed',
+            errorMessage: e.toString(),
+            details: 'CREATE USER $email $role',
+          ));
+          print('❌ Error creating user: $e');
+        }
         break;
 
       case 'COLLECTION':

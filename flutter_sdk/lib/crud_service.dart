@@ -54,7 +54,7 @@ class CrudService {
   }
 
   /// Create a new document
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final doc = await ShadowApp.collection('notes').create({
@@ -122,7 +122,7 @@ class CrudService {
   }
 
   /// Read a document by ID
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final doc = await ShadowApp.collection('notes').read('doc-123');
@@ -138,14 +138,12 @@ class CrudService {
     }
 
     try {
-      final response = await http
-          .get(
-            Uri.parse('$serverUrl/api/collections/$collectionId/documents/$docId'),
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
+      final response = await http.get(
+        Uri.parse('$serverUrl/api/collections/$collectionId/documents/$docId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
 
       if (response.statusCode == 404) {
         throw ShadowAppException(
@@ -192,7 +190,7 @@ class CrudService {
   }
 
   /// List documents in the collection
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final docs = await ShadowApp.collection('notes').list(limit: 20, offset: 0);
@@ -218,14 +216,12 @@ class CrudService {
         '?limit=$limit&offset=$offset',
       );
 
-      final response = await http
-          .get(
-            url,
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
 
       if (response.statusCode == 401) {
         throw AuthException(
@@ -269,7 +265,7 @@ class CrudService {
   }
 
   /// Update a document
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// await ShadowApp.collection('notes').update('doc-123', {
@@ -351,7 +347,7 @@ class CrudService {
   }
 
   /// Delete a document
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// await ShadowApp.collection('notes').delete('doc-123');
@@ -366,14 +362,12 @@ class CrudService {
     }
 
     try {
-      final response = await http
-          .delete(
-            Uri.parse('$serverUrl/api/collections/$collectionId/documents/$docId'),
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
+      final response = await http.delete(
+        Uri.parse('$serverUrl/api/collections/$collectionId/documents/$docId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
 
       if (response.statusCode == 404) {
         throw ShadowAppException(

@@ -143,7 +143,7 @@ class EmailService {
 
     // Encode as tar
     final tarBytes = TarEncoder().encode(archive);
-    
+
     // Compress with gzip
     final gzipBytes = GZipEncoder().encode(tarBytes);
 
@@ -151,7 +151,8 @@ class EmailService {
     final archiveFile = File(archivePath);
     await archiveFile.writeAsBytes(gzipBytes!);
 
-    print('[EMAIL] Archive created: ${archiveFile.path} (${gzipBytes.length} bytes)');
+    print(
+        '[EMAIL] Archive created: ${archiveFile.path} (${gzipBytes.length} bytes)');
     return archivePath;
   }
 

@@ -32,7 +32,7 @@ class AuthUser {
 class AuthService {
   final String serverUrl;
   final SharedPreferences prefs;
-  
+
   static const String _tokenKey = 'shadow_app_token';
   static const String _userKey = 'shadow_app_user';
 
@@ -201,15 +201,13 @@ class AuthService {
     }
 
     try {
-      final response = await http
-          .post(
-            Uri.parse('$serverUrl/auth/refresh'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_token',
-            },
-          )
-          .timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
+      final response = await http.post(
+        Uri.parse('$serverUrl/auth/refresh'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
 
       if (response.statusCode != 200) {
         throw AuthException(
@@ -269,10 +267,12 @@ class AuthService {
     _token = newToken;
     _currentUser = user;
     await prefs.setString(_tokenKey, newToken);
-    await prefs.setString(_userKey, jsonEncode({
-      'id': user.id,
-      'email': user.email,
-      'role': user.role,
-    }));
+    await prefs.setString(
+        _userKey,
+        jsonEncode({
+          'id': user.id,
+          'email': user.email,
+          'role': user.role,
+        }));
   }
 }
