@@ -112,6 +112,26 @@ class DatabaseManager {
       stmt.execute(row);
     }
     stmt.dispose();
+    // Ensure some default collections exist so clients can create documents
+    // immediately after signup (e.g. 'users', 'notes'). Use 'system' as owner.
+    try {
+      final defaultCollections = [
+        'users',
+        'notes',
+      ];
+      for (final name in defaultCollections) {
+        final existing = getCollectionByName(name);
+        // getCollectionByName returns a Future; check and create if missing
+        existing.then((c) async {
+          if (c == null) {
+            final collection = Collection(ownerId: 'system', name: name);
+            await createCollection(collection);
+          }
+        });
+      }
+    } catch (e) {
+      print('[DB] Failed to ensure default collections: $e');
+    }
   }
 
   /// Close database connection
@@ -192,7 +212,7 @@ class DatabaseManager {
   /// Get all users (admin only)
   Future<List<User>> getAllUsers() async {
     try {
-      final rows = _db.select('SELECT * FROM users');
+      final rows = _db.select('SELECT * FROM users ORDER BY created_at DESC');
       return rows.map((r) => User.fromJson(r.toMap())).toList();
     } catch (e) {
       print('[DB ERROR] Failed to get all users: $e');
@@ -244,10 +264,70 @@ class DatabaseManager {
 
   /// Delete a user (may fail if foreign key constraints exist)
   Future<void> deleteUser(String userId) async {
+    // Perform cascading cleanup to avoid foreign key constraint failures.
     try {
+      _db.execute('BEGIN TRANSACTION');
+
+      // 1) Delete media blobs for documents owned by the user
+      final docIdsStmt =
+          _db.prepare('SELECT id FROM documents WHERE owner_id = ?');
+      final docRows = docIdsStmt.select([userId]);
+      docIdsStmt.dispose();
+
+      if (docRows.isNotEmpty) {
+        final ids = docRows.map((r) => r.toMap()['id'] as String).toList();
+        // Delete media blobs referencing these documents
+        final placeholders = List.filled(ids.length, '?').join(',');
+        final deleteMediaStmt = _db.prepare(
+            'DELETE FROM media_blobs WHERE document_id IN ($placeholders)');
+        deleteMediaStmt.execute(ids);
+        deleteMediaStmt.dispose();
+      }
+
+      // 2) Delete documents owned by the user
+      final delDocsStmt =
+          _db.prepare('DELETE FROM documents WHERE owner_id = ?');
+      delDocsStmt.execute([userId]);
+      delDocsStmt.dispose();
+
+      // 3) For collections owned by the user, delete their documents and media, then delete the collections
+      final collStmt =
+          _db.prepare('SELECT id FROM collections WHERE owner_id = ?');
+      final collRows = collStmt.select([userId]);
+      collStmt.dispose();
+
+      for (final row in collRows) {
+        final collId = row.toMap()['id'] as String;
+
+        // Delete media blobs for documents in this collection
+        final deleteMediaForColl = _db.prepare(
+            r"DELETE FROM media_blobs WHERE document_id IN (SELECT id FROM documents WHERE collection_id = ?)");
+        deleteMediaForColl.execute([collId]);
+        deleteMediaForColl.dispose();
+
+        // Delete documents in this collection
+        final deleteDocsForColl =
+            _db.prepare('DELETE FROM documents WHERE collection_id = ?');
+        deleteDocsForColl.execute([collId]);
+        deleteDocsForColl.dispose();
+
+        // Delete the collection itself
+        final deleteColl = _db.prepare('DELETE FROM collections WHERE id = ?');
+        deleteColl.execute([collId]);
+        deleteColl.dispose();
+      }
+
+      // 4) Delete audit log entries referencing this user (to avoid FK issues)
+      final deleteLogs = _db.prepare('DELETE FROM audit_log WHERE user_id = ?');
+      deleteLogs.execute([userId]);
+      deleteLogs.dispose();
+
+      // 5) Finally delete the user
       final stmt = _db.prepare('DELETE FROM users WHERE id = ?');
       stmt.execute([userId]);
       stmt.dispose();
+
+      _db.execute('COMMIT');
 
       await _logDbAction(
         action: 'DELETE',
@@ -256,6 +336,9 @@ class DatabaseManager {
         status: 'success',
       );
     } catch (e) {
+      try {
+        _db.execute('ROLLBACK');
+      } catch (_) {}
       print('[DB ERROR] Failed to delete user: $e');
       await _logDbAction(
         action: 'DELETE',
@@ -321,6 +404,24 @@ class DatabaseManager {
       return Collection.fromJson(map);
     } catch (e) {
       print('[DB ERROR] Failed to get collection: $e');
+      rethrow;
+    }
+  }
+
+  /// Get collection by name
+  Future<Collection?> getCollectionByName(String name) async {
+    try {
+      final stmt = _db.prepare('SELECT * FROM collections WHERE name = ?');
+      final rows = stmt.select([name]);
+      stmt.dispose();
+
+      if (rows.isEmpty) return null;
+
+      final map = rows.first.toMap();
+      map['rules'] = _jsonDecode(map['rules'] as String);
+      return Collection.fromJson(map);
+    } catch (e) {
+      print('[DB ERROR] Failed to get collection by name: $e');
       rethrow;
     }
   }

@@ -115,6 +115,10 @@ class SchemaMigration {
     db.execute(
         'CREATE INDEX IF NOT EXISTS idx_collections_owner ON collections(owner_id)');
 
+    // Index for collections by name to speed up lookups by collection name
+    db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_collections_name ON collections(name)');
+
     // Index for media by document
     db.execute(
         'CREATE INDEX IF NOT EXISTS idx_media_document ON media_blobs(document_id)');

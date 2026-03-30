@@ -33,6 +33,15 @@ Response _jsonErrorResponse(int statusCode, String message) {
   );
 }
 
+/// Helper: Try locating a collection by ID first, then by name.
+Future<Collection?> _findCollection(String collectionIdOrName) async {
+  var collection = await database.getCollection(collectionIdOrName);
+  if (collection == null) {
+    collection = await database.getCollectionByName(collectionIdOrName);
+  }
+  return collection;
+}
+
 /// Create a new document in a collection
 Future<Response> handleCreateDocument(Request request) async {
   try {
@@ -53,8 +62,8 @@ Future<Response> handleCreateDocument(Request request) async {
       return _jsonErrorResponse(403, 'User not found');
     }
 
-    // Get collection and check write permission
-    final collection = await database.getCollection(collectionId);
+    // Get collection (accept either ID or name) and check write permission
+    final collection = await _findCollection(collectionId);
     if (collection == null) {
       return _jsonErrorResponse(404, 'Collection not found');
     }
@@ -65,7 +74,7 @@ Future<Response> handleCreateDocument(Request request) async {
         userId: userId,
         action: 'CREATE',
         resourceType: 'document',
-        resourceId: collectionId,
+        resourceId: collection.id,
         status: 'failed',
         errorMessage: 'Permission denied',
       ));
@@ -76,9 +85,9 @@ Future<Response> handleCreateDocument(Request request) async {
     final body = await request.readAsString();
     final data = jsonDecode(body) as Map<String, dynamic>;
 
-    // Create document
+    // Create document (use resolved collection.id)
     final newDoc = Document(
-      collectionId: collectionId,
+      collectionId: collection.id,
       ownerId: userId,
       data: data,
     );
@@ -137,8 +146,8 @@ Future<Response> handleReadDocument(Request request) async {
       return _jsonErrorResponse(403, 'User not found');
     }
 
-    // Get collection and check read permission
-    final collection = await database.getCollection(collectionId);
+    // Get collection (accept either ID or name) and check read permission
+    final collection = await _findCollection(collectionId);
     if (collection == null) {
       await database.logAction(AuditLog(
         userId: userId,
@@ -177,8 +186,8 @@ Future<Response> handleReadDocument(Request request) async {
       return _jsonErrorResponse(404, 'Document not found');
     }
 
-    // Verify document belongs to collection
-    if (doc.collectionId != collectionId) {
+    // Verify document belongs to collection (compare against resolved ID)
+    if (doc.collectionId != collection.id) {
       await database.logAction(AuditLog(
         userId: userId,
         action: 'READ',
@@ -243,8 +252,8 @@ Future<Response> handleUpdateDocument(Request request) async {
       return _jsonErrorResponse(403, 'User not found');
     }
 
-    // Get collection and check write permission
-    final collection = await database.getCollection(collectionId);
+    // Get collection (accept either ID or name) and check write permission
+    final collection = await _findCollection(collectionId);
     if (collection == null) {
       return _jsonErrorResponse(404, 'Collection not found');
     }
@@ -275,7 +284,7 @@ Future<Response> handleUpdateDocument(Request request) async {
       return _jsonErrorResponse(404, 'Document not found');
     }
 
-    if (existingDoc.collectionId != collectionId) {
+    if (existingDoc.collectionId != collection.id) {
       await database.logAction(AuditLog(
         userId: userId,
         action: 'UPDATE',
@@ -300,7 +309,7 @@ Future<Response> handleUpdateDocument(Request request) async {
     // Update document
     final updatedDoc = await database.updateDocument(Document(
       id: existingDoc.id,
-      collectionId: collectionId,
+      collectionId: collection.id,
       ownerId: existingDoc.ownerId,
       data: newData,
       createdAt: existingDoc.createdAt,
@@ -360,8 +369,8 @@ Future<Response> handleDeleteDocument(Request request) async {
       return _jsonErrorResponse(403, 'User not found');
     }
 
-    // Get collection and check write permission
-    final collection = await database.getCollection(collectionId);
+    // Get collection (accept either ID or name) and check write permission
+    final collection = await _findCollection(collectionId);
     if (collection == null) {
       return _jsonErrorResponse(404, 'Collection not found');
     }
@@ -380,7 +389,7 @@ Future<Response> handleDeleteDocument(Request request) async {
 
     // Get document to verify it exists and belongs to collection
     final doc = await database.getDocument(docId);
-    if (doc == null || doc.collectionId != collectionId) {
+    if (doc == null || doc.collectionId != collection.id) {
       await database.logAction(AuditLog(
         userId: userId,
         action: 'DELETE',
@@ -440,8 +449,8 @@ Future<Response> handleListDocuments(Request request) async {
       return _jsonErrorResponse(403, 'User not found');
     }
 
-    // Get collection and check read permission
-    final collection = await database.getCollection(collectionId);
+    // Get collection (accept either ID or name) and check read permission
+    final collection = await _findCollection(collectionId);
     if (collection == null) {
       return _jsonErrorResponse(404, 'Collection not found');
     }
@@ -456,8 +465,8 @@ Future<Response> handleListDocuments(Request request) async {
     final offset =
         int.tryParse(request.url.queryParameters['offset'] ?? '0') ?? 0;
 
-    // Get documents
-    final docs = await database.getCollectionDocuments(collectionId,
+    // Get documents (use resolved collection.id)
+    final docs = await database.getCollectionDocuments(collection.id,
         limit: limit, offset: offset);
 
     return Response.ok(

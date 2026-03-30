@@ -60,6 +60,7 @@ dartBackendServer/
 ## High-Level Flow
 
 ### Server Mode
+
 1. **CLI Entry**: `dart bin/main.dart server --port 8080 --db-path data/shadow_app.db`
 2. **Initialization**: Load config, initialize SQLite, create tables if needed
 3. **HTTP Server Startup**: Listen on port 8080 using Shelf framework
@@ -70,12 +71,14 @@ dartBackendServer/
    - All actions logged to file and memory stream (for live log tail)
 
 ### Log Tail Mode
+
 1. **CLI Entry**: `dart bin/main.dart log-tail`
 2. **Stream Subscription**: Subscribe to live action log stream from server process (via IPC or file tail)
 3. **ASCII Display**: Show formatted table of recent actions (user, action, timestamp, collection, status)
 4. **Auto-rotation**: Detect when log files rollover (daily)
 
 ### Admin Console Mode
+
 1. **CLI Entry**: `dart bin/main.dart admin --admin-key <secret>`
 2. **Interactive Prompt**: Admin can issue CRUD commands, review logs, manage users/rules
 3. **Full Database Access**: Bypass normal rules for admin queries
@@ -88,31 +91,43 @@ All endpoints use JSON request/response bodies. Common structure:
 ```json
 {
   "success": true,
-  "data": { /* response data */ },
+  "data": {
+    /* response data */
+  },
   "error": null,
   "timestamp": "2026-02-14T10:30:00Z"
 }
 ```
 
 ### Auth Endpoints
+
 - `POST /auth/signup` → Register user
 - `POST /auth/login` → Login with email/password, get JWT
 - `POST /auth/refresh` → Refresh expired JWT token
 
 ### CRUD Endpoints
+
 - `POST /api/collections/{id}/documents` → Create document
 - `GET /api/collections/{id}/documents/{docId}` → Read document
 - `PUT /api/collections/{id}/documents/{docId}` → Update document
 - `DELETE /api/collections/{id}/documents/{docId}` → Delete document
 - `GET /api/collections/{id}/documents` → List documents (with pagination)
 
+Note: the `{id}` path segment in the CRUD endpoints may be either the collection's
+internal identifier (UUID) or the collection's human-friendly `name` (for example
+`users` or `notes`). The server resolves a value as an ID first, then as a name.
+If the collection is not found the server returns `404 Not Found`; if the caller is
+authenticated but lacks permission the server returns `403 Forbidden`.
+
 ### Media Endpoints
+
 - `POST /api/media/upload` → Upload and compress media, store in document
 - `GET /api/media/download/{mediaId}` → Download and decompress media
 
 ## Database Schema (SQLite)
 
 ### Users
+
 - id (TEXT, primary key, UUID)
 - email (TEXT, unique)
 - password_hash (TEXT)
@@ -121,6 +136,7 @@ All endpoints use JSON request/response bodies. Common structure:
 - updated_at (INTEGER, Unix timestamp)
 
 ### Collections
+
 - id (TEXT, primary key, UUID)
 - owner_id (TEXT, FK to Users)
 - name (TEXT)
@@ -129,6 +145,7 @@ All endpoints use JSON request/response bodies. Common structure:
 - updated_at (INTEGER)
 
 ### Documents
+
 - id (TEXT, primary key, UUID)
 - collection_id (TEXT, FK to Collections)
 - owner_id (TEXT, FK to Users)
@@ -137,6 +154,7 @@ All endpoints use JSON request/response bodies. Common structure:
 - updated_at (INTEGER)
 
 ### MediaBlobs
+
 - id (TEXT, primary key, UUID)
 - document_id (TEXT, FK to Documents)
 - file_name (TEXT)
@@ -148,6 +166,7 @@ All endpoints use JSON request/response bodies. Common structure:
 - created_at (INTEGER)
 
 ### AuditLog
+
 - id (TEXT, primary key, UUID)
 - user_id (TEXT, FK to Users)
 - action (TEXT: CREATE, READ, UPDATE, DELETE, LOGIN)
@@ -188,6 +207,7 @@ All endpoints use JSON request/response bodies. Common structure:
 ## Flutter SDK Design
 
 The Flutter SDK is a simple wrapper that:
+
 1. Manages server connection URL and stored JWT token.
 2. Provides CRUD methods: `create()`, `read()`, `update()`, `delete()`, `list()`.
 3. Handles media upload/download with transparent compression.
