@@ -1,4 +1,5 @@
 .black_speech/
+config.yaml
 
 # Dart / Flutter
 .dart_tool/
