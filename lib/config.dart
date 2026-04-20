@@ -78,9 +78,15 @@ class ServerConfig {
         Platform.environment['SHADOW_ADMIN_KEY'] ??
         'change-me-admin-key';
 
-    // Email settings (Gmail)
-    gmailEmail = email?['email'] as String? ?? '';
-    gmailPassword = email?['password'] as String? ?? '';
+    // Email settings (Gmail SMTP with an app password)
+    gmailEmail = email?['email'] as String? ??
+        Platform.environment['SHADOW_GMAIL_EMAIL'] ??
+        Platform.environment['SHADOW_EMAIL_ADDRESS'] ??
+        '';
+    gmailPassword = email?['password'] as String? ??
+        Platform.environment['SHADOW_GMAIL_PASSWORD'] ??
+        Platform.environment['SHADOW_EMAIL_PASSWORD'] ??
+        '';
   }
 
   /// Load defaults (used if no config file exists)
@@ -95,8 +101,12 @@ class ServerConfig {
     logFilePath = 'data/logs';
     logRetentionDays = 7;
     logLevel = 'INFO';
-    gmailEmail = '';
-    gmailPassword = '';
+    gmailEmail = Platform.environment['SHADOW_GMAIL_EMAIL'] ??
+        Platform.environment['SHADOW_EMAIL_ADDRESS'] ??
+        '';
+    gmailPassword = Platform.environment['SHADOW_GMAIL_PASSWORD'] ??
+        Platform.environment['SHADOW_EMAIL_PASSWORD'] ??
+        '';
     enableCors = true;
     enableWal = true;
   }
@@ -123,6 +133,44 @@ class ServerConfig {
     final baseDir = path.join(
         homeDir, 'Library', 'Application Support', 'ShadowAppBackend');
     return path.normalize(path.join(baseDir, inputPath));
+  }
+
+  /// Persist the current runtime config to config.yaml in the workspace root.
+  Future<void> save() async {
+    final configFile = File('config.yaml');
+    final yaml = '''
+server:
+  host: ${_yamlString(serverHost)}
+  port: $serverPort
+  enable_cors: $enableCors
+
+database:
+  path: ${_yamlString(dbPath)}
+  enable_wal: $enableWal
+
+logging:
+  file_path: ${_yamlString(logFilePath)}
+  retention_days: $logRetentionDays
+  level: ${_yamlString(logLevel)}
+
+auth:
+  jwt_secret: ${_yamlString(jwtSecret)}
+  jwt_expiry_hours: $jwtExpiryHours
+  admin_api_key: ${_yamlString(adminApiKey)}
+
+email:
+  provider: gmail
+  smtp_server: smtp.gmail.com
+  smtp_port: 587
+  email: ${_yamlString(gmailEmail)}
+  password: ${_yamlString(gmailPassword)}
+''';
+
+    await configFile.writeAsString(yaml);
+  }
+
+  String _yamlString(String value) {
+    return "'${value.replaceAll("'", "''")}'";
   }
 
   /// Generate a random secret for JWT signing

@@ -11,8 +11,9 @@ Complete guide for integrating with the Shadow App Backend Server using multiple
 5. [JavaScript/Node.js](#javascriptnode.js)
 6. [Python](#python)
 7. [Authentication](#authentication)
-8. [Error Handling](#error-handling)
-9. [Rate Limiting & Best Practices](#rate-limiting--best-practices)
+8. [Operator Account Changes](#operator-account-changes)
+9. [Error Handling](#error-handling)
+10. [Rate Limiting & Best Practices](#rate-limiting--best-practices)
 
 ---
 
@@ -196,6 +197,23 @@ Notes:
 ```
 Authorization: Bearer <token>
 ```
+
+## Operator Account Changes
+
+The backend now supports operator-driven account maintenance in the admin console.
+
+What operators can do:
+
+- Change a user's login email.
+- Reset a user's password using either a manually entered password or a generated random password.
+- Configure the Gmail sender account used for admin report bundle emails.
+
+What SDK consumers should expect:
+
+- After an operator changes a user's email, the user should log in with the new email for future sessions.
+- After an operator resets a password, the old password stops working immediately for new logins.
+- Existing JWTs are not retroactively rewritten; clients should handle normal token expiry and re-authenticate when needed.
+- None of these operator actions are currently exposed through the public Flutter or React SDKs; they are backend/admin-console operations.
 
 #### User Registration
 

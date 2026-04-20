@@ -106,23 +106,45 @@ class TerminalUI {
   }
 
   /// Prompt user for input with a message
-  static String prompt(String message, {bool required = true}) {
-    stdout.write('$message: ');
+  static String prompt(
+    String message, {
+    bool required = true,
+    String? defaultValue,
+  }) {
+    final suffix = defaultValue != null && defaultValue.isNotEmpty
+        ? ' [$defaultValue]'
+        : '';
+    stdout.write('$message$suffix: ');
     final input = stdin.readLineSync() ?? '';
-    if (required && input.isEmpty) {
+    final resolved =
+        input.isEmpty && defaultValue != null ? defaultValue : input;
+    if (required && resolved.isEmpty) {
       printError('This field is required');
-      return prompt(message, required: required);
+      return prompt(
+        message,
+        required: required,
+        defaultValue: defaultValue,
+      );
     }
-    return input;
+    return resolved;
   }
 
   /// Prompt for password (doesn't hide input, but labels it as password)
-  static String promptPassword(String message) {
-    stdout.write('$message (hidden): ');
+  static String promptPassword(
+    String message, {
+    bool allowEmpty = false,
+  }) {
+    final suffix =
+        allowEmpty ? ' (hidden, leave blank to keep current)' : ' (hidden)';
+    stdout.write('$message$suffix: ');
     stdin.echoMode = false;
     final password = stdin.readLineSync() ?? '';
     stdin.echoMode = true;
     print(''); // New line after password
+    if (!allowEmpty && password.isEmpty) {
+      printError('This field is required');
+      return promptPassword(message, allowEmpty: allowEmpty);
+    }
     return password;
   }
 

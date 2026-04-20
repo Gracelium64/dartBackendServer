@@ -20,7 +20,8 @@
 10. [TypeScript Types](#typescript-types)
 11. [Error Handling](#error-handling)
 12. [Best Practices](#best-practices)
-13. [Comparison with Flutter SDK](#comparison-with-flutter-sdk)
+13. [Operator Coordination](#operator-coordination)
+14. [Comparison with Flutter SDK](#comparison-with-flutter-sdk)
 
 ---
 
@@ -315,6 +316,17 @@ const config = {
 ---
 
 ## Authentication
+
+### Operator-Managed Account Changes
+
+The backend admin console can now change a user's login email and reset a user's password.
+
+For React apps, that means:
+
+- Keep email editable in your login UI rather than assuming it is a permanent identifier.
+- If a user reports that a password stopped working, they may have been reset by an operator and need the new credential.
+- Existing tokens continue until expiry, then the user should authenticate again with the updated credentials.
+- These account-maintenance operations are backend/admin-console features, not React SDK methods.
 
 ### Signup
 
@@ -1313,6 +1325,17 @@ useEffect(() => {
 ```
 
 ---
+
+## Operator Coordination
+
+The React SDK should be used with the expectation that backend operators can change account credentials outside the client.
+
+Recommended frontend behavior:
+
+- Preserve a straightforward path back to the login screen after token expiry.
+- Avoid hard-coding user email as an immutable profile key in client-side state.
+- When supporting account-recovery or support flows, explain that operators may issue a temporary password through the admin console.
+- Treat report bundle export and email features as operator-only workflows handled on the backend.
 
 ## Comparison with Flutter SDK
 

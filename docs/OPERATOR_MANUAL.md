@@ -139,6 +139,8 @@ email:
   provider: gmail # Currently only supports Gmail
   smtp_server: smtp.gmail.com
   smtp_port: 587
+  email: your-account@gmail.com
+  password: your-gmail-app-password
 
 admin:
   auto_generate_key: true # Generate random key on startup
@@ -198,6 +200,8 @@ Enter your choice: 1
 2. Add User
 3. Delete User
 4. Change Role
+5. Change Email
+6. Reset Password
 
 Enter choice: 2
 Email: admin@mycompany.com
@@ -206,6 +210,47 @@ Role (admin/user): admin
 
 [SUCCESS] User created with ID: user-abc123
 ```
+
+### Change a User Email Address
+
+Via admin console:
+
+```
+Enter your choice: 1
+[Admin Users Menu]
+Enter choice: 5
+User ID or Email: admin@mycompany.com
+New email [admin@mycompany.com]: ops@mycompany.com
+
+[SUCCESS] Email updated: admin@mycompany.com -> ops@mycompany.com
+```
+
+This changes the email used for future logins. Existing tokens remain usable until they expire.
+
+### Reset a User Password
+
+Via admin console:
+
+```
+Enter your choice: 1
+[Admin Users Menu]
+Enter choice: 6
+User ID or Email: ops@mycompany.com
+1. Enter password manually
+2. Generate random password
+3. Cancel
+Choose option: 2
+
+[SUCCESS] Password reset for ops@mycompany.com
+[WARNING] Generated password: <generated value>
+```
+
+Behavior:
+
+- Manual resets require password confirmation.
+- Generated passwords are shown once in the terminal so the operator can distribute them securely.
+- Stored passwords are hashed before being written to the database.
+- Reset and email-change actions are written to the audit log.
 
 ### View Audit Log
 
@@ -247,29 +292,48 @@ JSON Data: {"name": "Test", "value": 123}
 [SUCCESS] Document created: doc-abc456
 ```
 
-### Export Monthly Logs
+### Export Admin Report Bundle
 
-Via admin console or automatic (first of month):
-
-```
-[System auto-emails previous month's logs to admin@mycompany.com]
-```
-
-Or manually:
+Via admin console email delivery or local export:
 
 ```
 Enter your choice: 6
 [Generate Reports]
-1. Export Month Logs
-2. User Activity Report
-3. Storage Usage Report
+1. Export Log Archive
+2. Export Full Report Bundle To Folder
+3. Email Full Report Bundle
+4. Configure Email Account Login
+5. Email Configuration Status
+6. Send Test Email
 
-Enter choice: 1
-Month (MM-YYYY): 01-2026
-Exporting to archive...
-[SUCCESS] Exported 1.2MB to data/exports/logs_01_2026.tar.gz
-Email sent to admin@mycompany.com
+Enter choice: 2
+Destination folder [/Users/operator/Library/Application Support/ShadowAppBackend/data/exports]: /Users/operator/Desktop/shadow-reports
+[SUCCESS] Report bundle created: /Users/operator/Desktop/shadow-reports/shadow_admin_report_2026-04-01T12-00-00.tar.gz
+
+Enter choice: 3
+Recipient email: admin@mycompany.com
+[SUCCESS] Report bundle emailed to admin@mycompany.com
 ```
+
+### Configure Gmail Sender Login
+
+Via admin console:
+
+```
+Enter your choice: 6
+[Generate Reports]
+Enter choice: 4
+Sender Gmail address [ops@mycompany.com]:
+Gmail app password (hidden):
+
+[SUCCESS] Email account login saved to config.yaml
+```
+
+Notes:
+
+- The prompt suggests the currently configured Gmail address first.
+- If none is configured yet, it suggests an existing non-service user email, preferring an admin user email.
+- Use a Gmail app password, not the normal interactive Gmail password.
 
 ## Troubleshooting
 
@@ -298,14 +362,14 @@ Email sent to admin@mycompany.com
 - Log tail subscriber lagging
 - Solution: Reduce log verbosity: set `logging.level: WARN` in config
 
-### **Email not sending monthly logs**
+### **Email not sending reports**
 
 - Gmail credentials expired or invalid
-- Solution: Open admin console, reconfigure Gmail:
+- Solution: Re-run `Generate Reports -> Configure Email Account Login`, or configure Gmail SMTP credentials in `config.yaml` or with environment variables:
   ```
-  Enter your choice: 5
-  [Configure Rules]
-  # Follow Gmail OAuth setup prompts
+  export SHADOW_GMAIL_EMAIL="your-account@gmail.com"
+  export SHADOW_GMAIL_PASSWORD="your-app-password"
+  dart bin/main.dart admin
   ```
 
 ### **Lost admin key**

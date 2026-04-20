@@ -21,7 +21,8 @@
 11. [Error Handling](#error-handling)
 12. [State Management](#state-management)
 13. [Best Practices](#best-practices)
-14. [Comparison with React SDK](#comparison-with-react-sdk)
+14. [Operator Coordination](#operator-coordination)
+15. [Comparison with React SDK](#comparison-with-react-sdk)
 
 ---
 
@@ -463,6 +464,17 @@ void main() async {
 ---
 
 ## Authentication
+
+### Operator-Managed Account Changes
+
+The backend admin console can now change a user's login email and reset a user's password.
+
+For Flutter apps, that means:
+
+- Your login form should treat email as mutable account data, not a permanent identifier cached forever.
+- If an operator resets the password, the user must use the new password on the next login.
+- Existing access tokens continue until expiry; after that, your app should send the user back through normal login.
+- Password resets and email changes are not Flutter SDK methods; they are administrative backend actions.
 
 ### Signup
 
@@ -1700,6 +1712,17 @@ try {
 ```
 
 ---
+
+## Operator Coordination
+
+The Flutter SDK works against a backend that may now be administratively updated through the operator console.
+
+Recommended app behavior:
+
+- Show clear login errors and let users retry with a changed email if an operator updates their account.
+- If login suddenly fails after a support interaction, prompt the user to verify whether their email or password was reset.
+- Do not assume the email address used during signup is immutable.
+- Treat admin report bundle export and email features as operator-only backend tooling, not as client SDK responsibilities.
 
 ## Comparison with React SDK
 

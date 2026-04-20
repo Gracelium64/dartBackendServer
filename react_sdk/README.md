@@ -12,6 +12,20 @@ React SDK for easy integration with the Shadow App Dart Backend Server. Provides
 - 📦 **TypeScript** - Full TypeScript support with type definitions
 - ⚡ **Context Provider** - Share client instance across your app
 
+## Backend Operator Notes
+
+The backend now includes additional operator-only account maintenance and reporting features that affect React clients indirectly:
+
+- Operators can change a user's login email from the admin console.
+- Operators can reset a user's password with hashing, using either manual entry or a generated random password.
+- Operators can configure a Gmail sender account and email full admin report bundles, or export the same bundle locally.
+
+What this means for React apps:
+
+- Users may need to log in with a different email after an operator account update.
+- Password resets happen on the backend; the React SDK does not expose a client-side admin reset API.
+- Existing tokens continue to work until expiry, after which re-authentication uses the new credentials.
+
 ## Installation
 
 ```bash

@@ -36,6 +36,7 @@ function authPayloadToUser(payload: {
 
 export interface UseAuthReturn {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: ApiError | null;
@@ -49,6 +50,7 @@ export interface UseAuthReturn {
  */
 export function useAuth(client: ShadowAppClient): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(client.getToken());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
 
@@ -60,6 +62,7 @@ export function useAuth(client: ShadowAppClient): UseAuthReturn {
         const response = await client.signup(request);
         if (response.success) {
           setUser(authPayloadToUser(response.data));
+          setToken(response.data.token);
         }
       } catch (err) {
         setError(err as ApiError);
@@ -79,6 +82,7 @@ export function useAuth(client: ShadowAppClient): UseAuthReturn {
         const response = await client.login(request);
         if (response.success) {
           setUser(authPayloadToUser(response.data));
+          setToken(response.data.token);
         }
       } catch (err) {
         setError(err as ApiError);
@@ -93,12 +97,14 @@ export function useAuth(client: ShadowAppClient): UseAuthReturn {
   const logout = useCallback(() => {
     client.logout();
     setUser(null);
+    setToken(null);
     setError(null);
   }, [client]);
 
   return {
     user,
-    isAuthenticated: client.isAuthenticated(),
+    token,
+    isAuthenticated: !!token,
     isLoading,
     error,
     signup,

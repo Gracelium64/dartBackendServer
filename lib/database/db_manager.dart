@@ -262,6 +262,93 @@ class DatabaseManager {
     }
   }
 
+  /// Update a user's email address.
+  Future<User?> updateUserEmail(String userId, String email) async {
+    try {
+      final normalizedEmail = email.trim().toLowerCase();
+      if (normalizedEmail.isEmpty) {
+        throw ArgumentError('Email is required');
+      }
+
+      final existingUser = await getUserByEmail(normalizedEmail);
+      if (existingUser != null && existingUser.id != userId) {
+        throw StateError('Email is already in use');
+      }
+
+      final stmt = _db.prepare('''
+        UPDATE users
+        SET email = ?, updated_at = ?
+        WHERE id = ?
+      ''');
+      stmt.execute([
+        normalizedEmail,
+        DateTime.now().millisecondsSinceEpoch,
+        userId,
+      ]);
+      stmt.dispose();
+
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'user_email',
+        resourceId: userId,
+        status: 'success',
+      );
+
+      return await getUserById(userId);
+    } catch (e) {
+      print('[DB ERROR] Failed to update user email: $e');
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'user_email',
+        resourceId: userId,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
+  /// Update a user's password hash.
+  Future<User?> updateUserPasswordHash(
+      String userId, String passwordHash) async {
+    try {
+      if (passwordHash.trim().isEmpty) {
+        throw ArgumentError('Password hash is required');
+      }
+
+      final stmt = _db.prepare('''
+        UPDATE users
+        SET password_hash = ?, updated_at = ?
+        WHERE id = ?
+      ''');
+      stmt.execute([
+        passwordHash,
+        DateTime.now().millisecondsSinceEpoch,
+        userId,
+      ]);
+      stmt.dispose();
+
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'user_password',
+        resourceId: userId,
+        status: 'success',
+      );
+
+      return await getUserById(userId);
+    } catch (e) {
+      print('[DB ERROR] Failed to update user password hash: $e');
+      await _logDbAction(
+        action: 'UPDATE',
+        resourceType: 'user_password',
+        resourceId: userId,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
   /// Delete a user (may fail if foreign key constraints exist)
   Future<void> deleteUser(String userId) async {
     // Perform cascading cleanup to avoid foreign key constraint failures.

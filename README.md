@@ -1,6 +1,6 @@
 # Shadow App Backend Server
-## see cli_client/bin/basics.rtf for starting point usage example for setting up server and client ##
 
+## see cli_client/bin/basics.rtf for starting point usage example for setting up server and client
 
 A **Dart-only learning backend server** for Flutter developers. Write your own backend, understand how it works, and deploy with confidence.
 
@@ -26,8 +26,10 @@ Build a backend server written **entirely in Dart** that teaches you backend dev
 - **Access Control**: Per-collection permission rules (read/write/public)
 - **Live Logging**: Real-time audit trail of all database actions with log-tail feature
 - **CLI Admin Console**: Full database management via interactive terminal interface
+- **Admin User Maintenance**: Change user email addresses and reset passwords with hashing and audit logging
 - **Flutter SDK**: Simple, intuitive package for your Flutter apps
-- **Gmail Integration**: Monthly log reports sent automatically to admin email
+- **Gmail Integration**: Send admin report bundles from a Gmail account configured in config or environment
+- **Report Exports**: Export a full admin report bundle to a folder of your choice from the admin console
 - **Production Ready**: Designed to scale from local dev to cloud deployment
 
 ## 📚 Quick Start
@@ -49,6 +51,12 @@ dart bin/main.dart admin
 ```
 
 **See**: [Operator Manual](docs/OPERATOR_MANUAL.md)
+
+Admin console additions relevant to operators:
+
+- `Manage Users` now supports changing a user's email and resetting a password.
+- Password resets can use either operator-entered passwords or a generated random password.
+- `Generate Reports` now supports configuring the Gmail sender login, emailing a full report bundle, or exporting the bundle to a local folder.
 
 ### For Flutter Developers
 
@@ -118,7 +126,8 @@ dartBackendServer/
 - **Tokens**: JWT (HS256) with 24-hour expiry
 - **Authorization**: Per-collection access rules
 - **Audit**: Every action logged with user & timestamp
-- **Email**: Gmail for monthly log delivery
+- **Admin Resets**: Password resets are re-hashed before storage and recorded in the audit log
+- **Email**: Gmail SMTP using an app password for report delivery
 
 ## 🚀 Getting Started
 
@@ -244,8 +253,18 @@ dart cli_client/bin/client.dart \
 ```bash
 dart test              # Unit tests
 dart bin/main.dart server --log-level DEBUG     # Verbose logging
-dart bin/main.dart test-email --to admin@example.com  # Test Gmail
+dart bin/main.dart test-email --to admin@example.com  # Test Gmail SMTP delivery
 ```
+
+## 🛠️ Admin Console Highlights
+
+Recent operator-facing additions:
+
+- `Manage Users -> Change Email`: updates the stored login email for a user.
+- `Manage Users -> Reset Password`: stores a newly hashed password and logs the reset action.
+- `Generate Reports -> Configure Email Account Login`: stores the Gmail sender address and app password in `config.yaml`, using an existing user email as the default suggestion when available.
+- `Generate Reports -> Export Full Report Bundle To Folder`: writes a `tar.gz` bundle containing database snapshots, logs, and JSON exports.
+- `Generate Reports -> Email Full Report Bundle`: sends that bundle as an attachment through the configured Gmail account.
 
 ## 📚 Code Comments
 

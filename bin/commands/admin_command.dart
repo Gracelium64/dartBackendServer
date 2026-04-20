@@ -7,6 +7,7 @@
 import 'package:args/args.dart';
 import 'package:shadow_app_backend/config.dart';
 import 'package:shadow_app_backend/database/db_manager.dart';
+import 'package:shadow_app_backend/logging/email_service.dart';
 import 'package:shadow_app_backend/logging/logger.dart';
 import 'dart:io';
 import 'dart:async';
@@ -27,7 +28,7 @@ import '../helpers/crud_repl.dart';
 /// - Manage collections and documents
 /// - Configure access control rules
 /// - Generate reports
-///
+/// -
 /// Example: dart bin/main.dart admin --db-path data/shadow_app.db
 Future<void> runAdminCommand(ArgResults results) async {
   TerminalUI.printHeader('Admin Console - Shadow App Backend');
@@ -113,9 +114,11 @@ Future<void> _adminMenuUsers() async {
   print('2. Add User');
   print('3. Delete User');
   print('4. Change Role');
-  print('5. Back');
+  print('5. Change Email');
+  print('6. Reset Password');
+  print('7. Back');
 
-  stdout.write('\nEnter choice (1-5): ');
+  stdout.write('\nEnter choice (1-7): ');
   final choice = stdin.readLineSync();
 
   switch (choice) {
@@ -132,6 +135,12 @@ Future<void> _adminMenuUsers() async {
       await user_mgmt.changeUserRole(database);
       break;
     case '5':
+      await user_mgmt.changeUserEmail(database);
+      break;
+    case '6':
+      await user_mgmt.resetUserPassword(database);
+      break;
+    case '7':
       break;
     default:
       TerminalUI.printError('Invalid choice');
@@ -297,11 +306,16 @@ Future<void> _adminMenuReports() async {
   print('║              Generate Reports                                  ║');
   print('╚════════════════════════════════════════════════════════════════╝');
   print('\n1. Export Log Archive');
-  print('2. User Activity Report');
-  print('3. Storage Usage Report');
-  print('4. Back');
+  print('2. Export Full Report Bundle To Folder');
+  print('3. Email Full Report Bundle');
+  print('4. Configure Email Account Login');
+  print('5. Email Configuration Status');
+  print('6. Send Test Email');
+  print('7. User Activity Report');
+  print('8. Storage Usage Report');
+  print('9. Back');
 
-  stdout.write('\nEnter choice (1-4): ');
+  stdout.write('\nEnter choice (1-9): ');
   final choice = stdin.readLineSync();
 
   switch (choice) {
@@ -309,16 +323,160 @@ Future<void> _adminMenuReports() async {
       await reports.exportLogArchive();
       break;
     case '2':
-      await reports.generateUserActivityReport(database);
+      await _exportFullReportBundle();
       break;
     case '3':
-      await reports.generateStorageReport(database);
+      await _emailFullReportBundle();
       break;
     case '4':
+      await _configureEmailAccountLogin();
+      break;
+    case '5':
+      TerminalUI.printHeader('Email Configuration Status');
+      if (EmailService.isConfigured) {
+        TerminalUI.printSuccess(EmailService.configurationStatus);
+      } else {
+        TerminalUI.printWarning(EmailService.configurationStatus);
+      }
+      break;
+    case '6':
+      await _sendTestEmail();
+      break;
+    case '7':
+      await reports.generateUserActivityReport(database);
+      break;
+    case '8':
+      await reports.generateStorageReport(database);
+      break;
+    case '9':
       break;
     default:
       TerminalUI.printError('Invalid choice');
   }
+}
+
+Future<void> _configureEmailAccountLogin() async {
+  TerminalUI.printHeader('Configure Email Account Login');
+
+  final suggestedEmail = await _suggestEmailAccountAddress();
+  final defaultEmail = globalConfig.gmailEmail.trim().isNotEmpty
+      ? globalConfig.gmailEmail.trim()
+      : suggestedEmail;
+
+  final email = TerminalUI.prompt(
+    'Sender Gmail address',
+    required: true,
+    defaultValue: defaultEmail,
+  ).trim();
+  final password = TerminalUI.promptPassword(
+    'Gmail app password',
+    allowEmpty: globalConfig.gmailPassword.trim().isNotEmpty,
+  );
+
+  if (password.isEmpty && globalConfig.gmailPassword.trim().isEmpty) {
+    TerminalUI.printError('A Gmail app password is required.');
+    return;
+  }
+
+  globalConfig.gmailEmail = email;
+  if (password.isNotEmpty) {
+    globalConfig.gmailPassword = password;
+  }
+
+  await globalConfig.save();
+  TerminalUI.printSuccess('Email account login saved to config.yaml');
+  TerminalUI.printWarning(
+    'Use a Gmail app password here, not your normal Gmail sign-in password.',
+  );
+}
+
+Future<void> _exportFullReportBundle() async {
+  stdout.write(
+    '\nDestination folder [${path.join(path.dirname(globalConfig.dbPath), 'exports')}]: ',
+  );
+  final folder = stdin.readLineSync()?.trim();
+  final result = await reports.exportAdminReportBundle(
+    database,
+    outputDirectory: folder,
+  );
+
+  if (result != null) {
+    TerminalUI.printSuccess('Bundle size: ${result.sizeBytes} bytes');
+  }
+}
+
+Future<void> _emailFullReportBundle() async {
+  TerminalUI.printHeader('Email Full Report Bundle');
+
+  if (!EmailService.isConfigured) {
+    TerminalUI.printError(EmailService.configurationStatus);
+    return;
+  }
+
+  stdout.write('Recipient email: ');
+  final recipient = stdin.readLineSync()?.trim() ?? '';
+  if (recipient.isEmpty) {
+    TerminalUI.printError('Recipient email is required.');
+    return;
+  }
+
+  final result = await reports.exportAdminReportBundle(database);
+  if (result == null) {
+    return;
+  }
+
+  final sent = await EmailService.sendAdminReportBundle(
+    to: recipient,
+    bundlePath: result.bundlePath,
+  );
+  if (sent) {
+    TerminalUI.printSuccess('Report bundle emailed to $recipient');
+  } else {
+    TerminalUI.printError('Failed to send report bundle to $recipient');
+  }
+}
+
+Future<void> _sendTestEmail() async {
+  TerminalUI.printHeader('Send Test Email');
+
+  if (!EmailService.isConfigured) {
+    TerminalUI.printError(EmailService.configurationStatus);
+    return;
+  }
+
+  stdout.write('Recipient email: ');
+  final recipient = stdin.readLineSync()?.trim() ?? '';
+  if (recipient.isEmpty) {
+    TerminalUI.printError('Recipient email is required.');
+    return;
+  }
+
+  final sent = await EmailService.testEmail(recipient);
+  if (sent) {
+    TerminalUI.printSuccess('Test email sent to $recipient');
+  } else {
+    TerminalUI.printError('Failed to send test email to $recipient');
+  }
+}
+
+Future<String?> _suggestEmailAccountAddress() async {
+  final users = await database.getAllUsers();
+
+  for (final user in users) {
+    final email = user.email.trim();
+    if (user.role == 'admin' && !email.endsWith('@shadow.local')) {
+      return email;
+    }
+  }
+
+  for (final user in users) {
+    final email = user.email.trim();
+    if (!email.endsWith('@shadow.local')) {
+      return email;
+    }
+  }
+
+  return null;
 }
 
 /// Resolve database path to handle different OS conventions

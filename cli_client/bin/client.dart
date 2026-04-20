@@ -1,11 +1,15 @@
 #!/usr/bin/env dart
 //
+// see cli_client/bin/basics.rtf for examples of initial usage
+//
+//
 // cli_client/bin/client.dart
 // Remote command-line client for Shadow App Backend Server
 //
 // Usage:
 //   dart bin/client.dart --server http://localhost:8080 --auth-key admin_key --list-users
 //   dart bin/client.dart --server http://192.168.1.100:8080 --email user@ex.com --password pass --login
+//   export SHADOW_TOKEN="..."
 //   dart bin/client.dart --server http://localhost:8080 --token "$SHADOW_TOKEN" --list-users
 //
 

@@ -14,12 +14,23 @@ import 'logger.dart';
 
 /// Email service for sending monthly log reports
 class EmailService {
+  static bool get isConfigured =>
+      globalConfig.gmailEmail.trim().isNotEmpty &&
+      globalConfig.gmailPassword.trim().isNotEmpty;
+
+  static String get configurationStatus {
+    if (!isConfigured) {
+      return 'Not configured. Set email.email/email.password in config.yaml or SHADOW_GMAIL_EMAIL/SHADOW_GMAIL_PASSWORD in the environment.';
+    }
+
+    return 'Configured for Gmail SMTP as ${globalConfig.gmailEmail}. Use a Gmail app password for sending.';
+  }
+
   /// Send monthly log export to admin email
   /// Called automatically on the 1st of each month
   static Future<bool> sendMonthlyLogReport(String adminEmail) async {
     try {
-      if (globalConfig.gmailEmail.isEmpty ||
-          globalConfig.gmailPassword.isEmpty) {
+      if (!isConfigured) {
         print('[EMAIL] Gmail credentials not configured');
         return false;
       }
@@ -159,8 +170,7 @@ class EmailService {
   /// Test email sending (for manual verification)
   static Future<bool> testEmail(String to) async {
     try {
-      if (globalConfig.gmailEmail.isEmpty ||
-          globalConfig.gmailPassword.isEmpty) {
+      if (!isConfigured) {
         print('[EMAIL] Gmail credentials not configured');
         return false;
       }
@@ -220,5 +230,89 @@ class EmailService {
       // ignore: unawaited_futures
       scheduleMonthlyReport(adminEmail);
     });
+  }
+
+  /// Send a generated admin report bundle to a recipient.
+  static Future<bool> sendAdminReportBundle({
+    required String to,
+    required String bundlePath,
+  }) async {
+    try {
+      if (!isConfigured) {
+        print('[EMAIL] Gmail credentials not configured');
+        return false;
+      }
+
+      final bundleFile = File(bundlePath);
+      if (!await bundleFile.exists()) {
+        print('[EMAIL ERROR] Report bundle not found: $bundlePath');
+        return false;
+      }
+
+      print('[EMAIL] Sending admin report bundle to $to...');
+
+      final smtpServer =
+          gmail(globalConfig.gmailEmail, globalConfig.gmailPassword);
+
+      final message = Message()
+        ..from = Address(globalConfig.gmailEmail, 'Shadow App Backend')
+        ..recipients.add(to)
+        ..subject =
+            '[Shadow App] Admin report bundle - ${DateTime.now().toIso8601String().substring(0, 19)}'
+        ..html = _buildAdminReportEmailBody(path.basename(bundlePath))
+        ..attachments.add(FileAttachment(bundleFile));
+
+      try {
+        await send(message, smtpServer);
+        print('[EMAIL] Admin report bundle sent to $to');
+        return true;
+      } on MailerException catch (e) {
+        print('[EMAIL ERROR] Failed to send admin report bundle: $e');
+        for (var p in e.problems) {
+          print('[EMAIL ERROR] Problem: ${p.code}: ${p.msg}');
+        }
+        return false;
+      }
+    } catch (e) {
+      print('[EMAIL ERROR] Admin report bundle send failed: $e');
+      return false;
+    }
+  }
+
+  static String _buildAdminReportEmailBody(String attachmentName) {
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; }
+    h1 { color: #0066cc; }
+    .section { margin: 20px 0; padding: 10px; border: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <h1>Shadow App Backend - Admin Report Bundle</h1>
+
+  <div class="section">
+    <p><strong>Generated:</strong> ${DateTime.now().toIso8601String()}</p>
+    <p><strong>Attachment:</strong> <code>$attachmentName</code></p>
+  </div>
+
+  <div class="section">
+    <h2>Included Data</h2>
+    <ul>
+      <li>Current SQLite database snapshot files</li>
+      <li>Audit log files</li>
+      <li>JSON exports for users, collections, documents, and audit log</li>
+      <li>Storage and export metadata</li>
+    </ul>
+  </div>
+
+  <div class="section" style="background: #fff7e6; border-left: 4px solid #cc7a00;">
+    <p><strong>Confidential:</strong> This bundle contains administrative data and should be stored securely.</p>
+  </div>
+</body>
+</html>
+    ''';
   }
 }

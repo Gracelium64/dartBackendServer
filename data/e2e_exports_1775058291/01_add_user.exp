@@ -1,0 +1,10 @@
+log_user 0
+set timeout 90
+spawn dart bin/main.dart admin --db-path "/Users/grace64/ShadowApp/dartBackendServer/data/e2e_admin_full_1775058291.db"
+expect "Enter your choice (1-7): "
+send "1\r"
+expect "Enter choice (1-7): "
+send "2\r"
+expect "Email:"
+send "admisend \mpsend "admisend \mpsend "admisend \mpsend ensend "admisend \mpsend "admisend \mpsend "adsend "asesend "admisend
+eeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeee.eeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeee.eeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeee.eeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeeeeeeeeeeee aeeeeeeeeeeeon
