@@ -85,6 +85,9 @@ Press Ctrl+C to stop the server gracefully.
 
   /// Setup all HTTP routes
   void _setupRoutes() {
+    // Root endpoint for browser visits
+    _router.get('/', _rootHandler);
+
     // Health check endpoint
     _router.get('/health', _healthHandler);
 
@@ -127,6 +130,15 @@ Press Ctrl+C to stop the server gracefully.
 
     // Catch-all for 404
     _router.all('/<ignored|.*>', _notFoundHandler);
+  }
+
+  /// Handler for root route: returns GitHub repo link
+  Response _rootHandler(Request request) {
+    const githubRepoUrl = 'https://github.com/Gracelium64/dartBackendServer';
+    return Response.ok(
+      'Running Dart Backend from this repository: $githubRepoUrl',
+      headers: {'content-type': 'text/plain'},
+    );
   }
 
   /// Middleware: Log all incoming requests
