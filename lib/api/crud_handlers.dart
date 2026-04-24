@@ -15,6 +15,12 @@ import '../auth/rule_engine.dart';
 
 /// Extract user info from JWT token in request
 Future<Map<String, dynamic>?> _getUserFromRequest(Request request) async {
+  // Prefer claims already injected by the auth middleware (covers admin-key auth)
+  final contextClaims = request.context['claims'];
+  if (contextClaims is Map<String, dynamic>) {
+    return contextClaims;
+  }
+
   final authHeader = request.headers['authorization'];
   if (authHeader == null || !authHeader.startsWith('Bearer ')) {
     return null;
