@@ -26,8 +26,16 @@ final port = int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080;
 Future<void> runServerCommand(ArgResults results) async {
   TerminalUI.printHeader('Starting Shadow App Backend Server');
 
-  // Extract and validate arguments
-  final port = int.parse(results['port'] as String);
+  // Determine port: --port arg > PORT env var > 8080
+  int port;
+  final portArg = results['port'] as String?;
+  if (portArg != null && portArg.isNotEmpty && portArg != 'null') {
+    port = int.tryParse(portArg) ??
+        (int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080);
+  } else {
+    port = int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080;
+  }
+
   final host = results['host'] as String;
   final dbPath = _resolveDbPath(results['db-path'] as String);
   final logLevel = results['log-level'] as String;

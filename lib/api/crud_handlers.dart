@@ -429,6 +429,77 @@ Future<Response> handleDeleteDocument(Request request) async {
   }
 }
 
+/// Delete a collection and all its documents
+Future<Response> handleDeleteCollection(Request request) async {
+  try {
+    final collectionId = request.params['collectionId'];
+
+    if (collectionId == null) {
+      return _jsonErrorResponse(400, 'Collection ID required');
+    }
+
+    // Check authentication
+    final userClaims = await _getUserFromRequest(request);
+    if (userClaims == null) {
+      return _jsonErrorResponse(401, 'Not authenticated');
+    }
+
+    final userId = userClaims['sub'] as String;
+    final user = await database.getUserById(userId);
+    if (user == null) {
+      return _jsonErrorResponse(403, 'User not found');
+    }
+
+    // Get collection (accept either ID or name)
+    final collection = await _findCollection(collectionId);
+    if (collection == null) {
+      return _jsonErrorResponse(404, 'Collection not found');
+    }
+
+    // Check if user owns the collection or is admin
+    final isOwner = collection.ownerId == userId;
+    final isAdmin = user.role.trim().toLowerCase() == 'admin';
+
+    if (!isOwner && !isAdmin) {
+      await database.logAction(AuditLog(
+        userId: userId,
+        action: 'DELETE',
+        resourceType: 'collection',
+        resourceId: collection.id,
+        status: 'failed',
+        errorMessage: 'Permission denied',
+      ));
+      return _jsonErrorResponse(403, 'Permission denied');
+    }
+
+    // Delete collection (cascades to documents and media)
+    await database.deleteCollection(collection.id);
+
+    // Log successful deletion
+    await database.logAction(AuditLog(
+      userId: userId,
+      action: 'DELETE',
+      resourceType: 'collection',
+      resourceId: collection.id,
+      status: 'success',
+    ));
+
+    return Response.ok(
+      jsonEncode({
+        'success': true,
+        'data': {'deleted': true},
+        'timestamp': DateTime.now().toIso8601String(),
+      }),
+      headers: {'Content-Type': 'application/json'},
+    );
+  } catch (e) {
+    print('[HANDLER ERROR] Delete collection failed: $e');
+    return Response.internalServerError(
+      body: jsonEncode({'error': 'Internal server error'}),
+    );
+  }
+}
+
 /// List documents in a collection
 Future<Response> handleListDocuments(Request request) async {
   try {

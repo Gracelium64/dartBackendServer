@@ -100,6 +100,7 @@ Press Ctrl+C to stop the server gracefully.
     _router.get('/api/users', _listUsersHandler);
     _router.get('/api/collections', _listCollectionsHandler);
     _router.post('/api/collections', _createCollectionHandler);
+    _router.delete('/api/collections/<collectionId>', _deleteCollectionHandler);
     _router.post(
       '/api/collections/<collectionId>/documents',
       _createDocHandler,
@@ -654,6 +655,16 @@ Press Ctrl+C to stop the server gracefully.
         body: jsonEncode({'success': false, 'error': e.toString()}),
       );
     }
+  }
+
+  /// Handler: Delete collection
+  Future<Response> _deleteCollectionHandler(Request request) async {
+    return crud.handleDeleteCollection(request);
+  }
+
+  /// Handler: Create document
+  Future<Response> _createDocHandler(Request request) async {
+    return crud.handleCreateDocument(request);
   }
 
   /// Handler: Read document

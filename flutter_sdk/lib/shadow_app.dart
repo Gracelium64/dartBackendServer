@@ -4,6 +4,8 @@
 // It provides simple methods for CRUD operations, authentication, and media handling.
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'auth_service.dart';
 import 'crud_service.dart';
 import 'media_service.dart';
@@ -81,6 +83,81 @@ class ShadowApp {
       serverUrl: _instance._serverUrl,
       prefs: _instance._prefs,
     );
+  }
+
+  /// Delete a collection and all its documents
+  ///
+  /// Example:
+  /// ```dart
+  /// await ShadowApp.deleteCollection('notes');
+  /// ```
+  static Future<void> deleteCollection(String collectionId) async {
+    final token = _instance._prefs.getString('shadow_app_token');
+    if (token == null) {
+      throw AuthException(
+        message: 'Not authenticated',
+        originalError: null,
+      );
+    }
+
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('${_instance._serverUrl}/api/collections/$collectionId'),
+            headers: {
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
+
+      if (response.statusCode == 404) {
+        throw ShadowAppException(
+          message: 'Collection not found',
+          originalError: response.body,
+        );
+      }
+
+      if (response.statusCode == 401) {
+        throw AuthException(
+          message: 'Authentication failed',
+          originalError: response.body,
+        );
+      }
+
+      if (response.statusCode == 403) {
+        throw ValidationException(
+          message: 'Permission denied',
+          originalError: response.body,
+        );
+      }
+
+      if (response.statusCode != 200) {
+        final error = jsonDecode(response.body);
+        throw ShadowAppException(
+          message: error['error'] ?? 'Delete failed',
+          originalError: response.body,
+        );
+      }
+
+      final data = jsonDecode(response.body);
+      if (data['success'] != true) {
+        throw ShadowAppException(
+          message: data['error'] ?? 'Delete failed',
+          originalError: data,
+        );
+      }
+
+      if (ShadowAppConfig.enableDebugLogging) {
+        print('[SDK] Deleted collection: $collectionId');
+      }
+    } on ShadowAppException {
+      rethrow;
+    } catch (e) {
+      throw NetworkException(
+        message: 'Delete collection failed: $e',
+        originalError: e,
+      );
+    }
   }
 
   /// Get server URL

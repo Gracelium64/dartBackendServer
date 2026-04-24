@@ -586,6 +586,52 @@ class DatabaseManager {
     }
   }
 
+  /// Delete a collection and all its documents and media
+  Future<void> deleteCollection(String collectionId) async {
+    try {
+      _db.execute('BEGIN TRANSACTION');
+
+      // 1) Delete all media blobs for documents in this collection
+      final deleteMediaStmt = _db.prepare(
+          r'DELETE FROM media_blobs WHERE document_id IN (SELECT id FROM documents WHERE collection_id = ?)');
+      deleteMediaStmt.execute([collectionId]);
+      deleteMediaStmt.dispose();
+
+      // 2) Delete all documents in this collection
+      final deleteDocsStmt =
+          _db.prepare('DELETE FROM documents WHERE collection_id = ?');
+      deleteDocsStmt.execute([collectionId]);
+      deleteDocsStmt.dispose();
+
+      // 3) Delete the collection itself
+      final deleteCollStmt =
+          _db.prepare('DELETE FROM collections WHERE id = ?');
+      deleteCollStmt.execute([collectionId]);
+      deleteCollStmt.dispose();
+
+      _db.execute('COMMIT');
+
+      print('[DB] Collection deleted: $collectionId');
+      await _logDbAction(
+        action: 'DELETE',
+        resourceType: 'collection',
+        resourceId: collectionId,
+        status: 'success',
+      );
+    } catch (e) {
+      _db.execute('ROLLBACK');
+      print('[DB ERROR] Failed to delete collection: $e');
+      await _logDbAction(
+        action: 'DELETE',
+        resourceType: 'collection',
+        resourceId: collectionId,
+        status: 'failed',
+        errorMessage: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
   // === DOCUMENT OPERATIONS ===
 
   /// Create a new document

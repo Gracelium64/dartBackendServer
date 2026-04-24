@@ -260,6 +260,23 @@ class ShadowAppClient {
     }
   }
 
+  /// Delete a collection
+  Future<void> deleteCollection(String collectionId) async {
+    try {
+      final response =
+          await request('DELETE', '/api/collections/$collectionId');
+
+      if (_isSuccessResponse(response)) {
+        print(
+            '✓ Collection deleted (ID: ${_shortId(collectionId)}) and all its documents');
+      } else {
+        print('❌ Failed to delete collection: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error: $e');
+    }
+  }
+
   /// Create a document
   Future<void> createDocument(
       String collectionId, Map<String, dynamic> data) async {
@@ -455,6 +472,7 @@ Listing data:
 
 CRUD Operations:
   dart bin/client.dart --server http://localhost:8080 --create-collection <name>
+  dart bin/client.dart --server http://localhost:8080 --delete-collection <collection_id>
   dart bin/client.dart --server http://localhost:8080 --create-document <collection_id> <json_data>
   dart bin/client.dart --server http://localhost:8080 --read-document <collection_id> <document_id>
   dart bin/client.dart --server http://localhost:8080 --update-document <collection_id> <document_id> <json_data>
@@ -547,6 +565,11 @@ Future<void> main(List<String> args) async {
       'create-collection',
       help: 'Create a new collection',
       valueHelp: 'name',
+    )
+    ..addOption(
+      'delete-collection',
+      help: 'Delete a collection (and all its documents)',
+      valueHelp: 'collection_id',
     )
     ..addOption(
       'create-document',
@@ -685,6 +708,8 @@ Future<void> main(List<String> args) async {
     await client.listDocuments(results['list-documents'] as String);
   } else if (results['create-collection'] != null) {
     await client.createCollection(results['create-collection'] as String);
+  } else if (results['delete-collection'] != null) {
+    await client.deleteCollection(results['delete-collection'] as String);
   } else if (results['create-document'] != null) {
     final collectionId = results['create-document'] as String;
     final dataStr = results['data'] as String?;
