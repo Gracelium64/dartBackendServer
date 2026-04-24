@@ -101,6 +101,17 @@ dart bin/client.dart \
   --create-collection "my_collection"
 ```
 
+**Delete a collection (and all its documents):**
+
+```bash
+dart bin/client.dart \
+  --server http://192.168.1.100:8080 \
+  --email user@example.com \
+  --password pass \
+  --login \
+  --delete-collection "collection_id"
+```
+
 ### Document Operations
 
 **List documents in a collection:**
@@ -379,6 +390,7 @@ if __name__ == '__main__':
 | `--list-collections`  | -     | List all collections    | `--list-collections`                                           |
 | `--list-documents`    | `-l`  | List docs in collection | `--list-documents col_id`                                      |
 | `--create-collection` | -     | Create collection       | `--create-collection "name"`                                   |
+| `--delete-collection` | -     | Delete collection       | `--delete-collection col_id`                                   |
 | `--create-document`   | -     | Create document         | `--create-document col_id --data '{...}'`                      |
 | `--read-document`     | -     | Read document           | `--read-document col_id --document-id doc_id`                  |
 | `--update-document`   | -     | Update document         | `--update-document col_id --document-id doc_id --data '{...}'` |

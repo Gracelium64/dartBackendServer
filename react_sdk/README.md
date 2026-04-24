@@ -166,6 +166,20 @@ const token = client.getAccessToken();
 const isAuth = client.isAuthenticated();
 ```
 
+#### Collection Methods
+
+```tsx
+// Create collection
+const collection = await client.createCollection("my-collection", {
+  read: ["owner"],
+  write: ["owner"],
+  public_read: false,
+});
+
+// Delete collection (and all its documents)
+await client.deleteCollection("collection-id");
+```
+
 #### Document Methods
 
 ```tsx
@@ -264,6 +278,21 @@ const {
   updateDocument, // Update existing document
   deleteDocument, // Delete document
 } = useDocuments(client, "collection-id", { limit: 50 });
+```
+
+#### useCollections
+
+Manage collection-level operations:
+
+```tsx
+const {
+  deleteCollection, // Delete a collection and all its documents
+  isDeleting, // Loading state for delete operation
+  error, // Error if any
+} = useCollections(client);
+
+// Delete a collection
+await deleteCollection("collection-id");
 ```
 
 #### useMediaUpload

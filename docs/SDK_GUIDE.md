@@ -323,6 +323,28 @@ Content-Type: application/json
 }
 ```
 
+#### Delete Collection
+
+**Endpoint:** `DELETE /api/collections/{collectionId}`
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+**Response:** (200 OK)
+
+```json
+{
+  "success": true,
+  "data": { "deleted": true },
+  "timestamp": "2024-04-24T12:34:56Z"
+}
+```
+
+> **Note**: The collection owner or an admin can delete a collection. This operation cascades to delete all documents and associated media in the collection.
+
 ---
 
 ### Documents API

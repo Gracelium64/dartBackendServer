@@ -25,9 +25,8 @@ Future<void> runServerCommand(ArgResults results) async {
   TerminalUI.printHeader('Starting Shadow App Backend Server');
 
   // Determine port: explicit --port > PORT env var > 8080
-  final explicitPortArg = results.wasParsed('port')
-      ? (results['port'] as String?)?.trim()
-      : null;
+  final explicitPortArg =
+      results.wasParsed('port') ? (results['port'] as String?)?.trim() : null;
   final port = int.tryParse(explicitPortArg ?? '') ??
       int.tryParse(Platform.environment['PORT'] ?? '') ??
       8080;

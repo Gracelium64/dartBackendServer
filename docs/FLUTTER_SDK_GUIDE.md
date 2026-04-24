@@ -706,6 +706,22 @@ await ShadowApp.collection('notes').delete(noteId);
 print('Document deleted');
 ```
 
+### Delete Collection
+
+Remove an entire collection and all its documents:
+
+```dart
+final collectionId = 'notes';
+try {
+  await ShadowApp.deleteCollection(collectionId);
+  print('Collection deleted');
+} catch (e) {
+  print('Delete failed: $e');
+}
+```
+
+> **Note**: You must own the collection or be an admin to delete it. Deleting a collection cascades to all its documents and associated media.
+
 ## Media Operations
 
 Upload images, videos, or files directly into the database with automatic compression.
