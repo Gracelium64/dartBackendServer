@@ -662,11 +662,6 @@ Press Ctrl+C to stop the server gracefully.
     return crud.handleDeleteCollection(request);
   }
 
-  // /// Handler: Create document
-  // Future<Response> _createDocHandler(Request request) async {
-  //   return crud.handleCreateDocument(request);
-  // }
-
   /// Handler: Read document
   Future<Response> _readDocHandler(Request request) async {
     return crud.handleReadDocument(request);
