@@ -94,19 +94,14 @@ class ShadowApp {
   static Future<void> deleteCollection(String collectionId) async {
     final token = _instance._prefs.getString('shadow_app_token');
     if (token == null) {
-      throw AuthException(
-        message: 'Not authenticated',
-        originalError: null,
-      );
+      throw AuthException(message: 'Not authenticated', originalError: null);
     }
 
     try {
       final response = await http
           .delete(
             Uri.parse('${_instance._serverUrl}/api/collections/$collectionId'),
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
+            headers: {'Authorization': 'Bearer $token'},
           )
           .timeout(Duration(seconds: ShadowAppConfig.networkTimeout));
 
@@ -202,17 +197,17 @@ class ShadowAppException implements Exception {
 /// Network exception
 class NetworkException extends ShadowAppException {
   NetworkException({required String message, dynamic originalError})
-      : super(message: message, originalError: originalError);
+    : super(message: message, originalError: originalError);
 }
 
 /// Authentication exception
 class AuthException extends ShadowAppException {
   AuthException({required String message, dynamic originalError})
-      : super(message: message, originalError: originalError);
+    : super(message: message, originalError: originalError);
 }
 
 /// Validation exception
 class ValidationException extends ShadowAppException {
   ValidationException({required String message, dynamic originalError})
-      : super(message: message, originalError: originalError);
+    : super(message: message, originalError: originalError);
 }

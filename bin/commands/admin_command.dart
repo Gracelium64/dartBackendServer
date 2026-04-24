@@ -194,15 +194,16 @@ Future<void> _adminMenuCrud() async {
   print('╚════════════════════════════════════════════════════════════════╝');
   print('\n1. List Collections');
   print('2. Create Collection');
-  print('3. Create Document');
-  print('4. Read Document');
-  print('5. Update Document');
-  print('6. Delete Document');
-  print('7. List Documents in Collection');
-  print('8. Raw CRUD + SQL Query Commands (Interactive Shell)');
-  print('9. Back');
+  print('3. Delete Collection');
+  print('4. Create Document');
+  print('5. Read Document');
+  print('6. Update Document');
+  print('7. Delete Document');
+  print('8. List Documents in Collection');
+  print('9. Raw CRUD + SQL Query Commands (Interactive Shell)');
+  print('10. Back');
 
-  stdout.write('\nEnter choice (1-9): ');
+  stdout.write('\nEnter choice (1-10): ');
   final choice = stdin.readLineSync();
 
   switch (choice) {
@@ -213,24 +214,27 @@ Future<void> _adminMenuCrud() async {
       await doc_ops.createCollection(database);
       break;
     case '3':
-      await doc_ops.createDocument(database);
+      await doc_ops.deleteCollection(database);
       break;
     case '4':
-      await doc_ops.readDocument(database);
+      await doc_ops.createDocument(database);
       break;
     case '5':
-      await doc_ops.updateDocument(database);
+      await doc_ops.readDocument(database);
       break;
     case '6':
-      await doc_ops.deleteDocument(database);
+      await doc_ops.updateDocument(database);
       break;
     case '7':
-      await doc_ops.listDocuments(database);
+      await doc_ops.deleteDocument(database);
       break;
     case '8':
-      await startCrudRepl(database);
+      await doc_ops.listDocuments(database);
       break;
     case '9':
+      await startCrudRepl(database);
+      break;
+    case '10':
       break;
     default:
       TerminalUI.printError('Invalid choice');

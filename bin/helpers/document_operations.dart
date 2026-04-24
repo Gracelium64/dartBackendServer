@@ -91,6 +91,55 @@ Future<void> createCollection(DatabaseManager database) async {
   }
 }
 
+/// Delete a collection and all contained documents/media
+Future<void> deleteCollection(DatabaseManager database) async {
+  TerminalUI.printHeader('Delete Collection');
+
+  final collectionId = TerminalUI.prompt('Collection ID', required: true);
+
+  if (!TerminalUI.confirm(
+      'Delete collection $collectionId and all its documents/media?')) {
+    TerminalUI.printWarning('Cancelled');
+    return;
+  }
+
+  try {
+    final existing = await database.getCollection(collectionId);
+    if (existing == null) {
+      TerminalUI.printError('Collection not found');
+      await database.logAction(AuditLog(
+        userId: 'admin_console',
+        action: 'DELETE',
+        resourceType: 'collection',
+        resourceId: collectionId,
+        status: 'failed',
+        errorMessage: 'Collection not found',
+      ));
+      return;
+    }
+
+    await database.deleteCollection(collectionId);
+    TerminalUI.printSuccess('Collection deleted');
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'DELETE',
+      resourceType: 'collection',
+      resourceId: collectionId,
+      status: 'success',
+    ));
+  } catch (e) {
+    await database.logAction(AuditLog(
+      userId: 'admin_console',
+      action: 'DELETE',
+      resourceType: 'collection',
+      resourceId: collectionId,
+      status: 'failed',
+      errorMessage: e.toString(),
+    ));
+    TerminalUI.printError('Failed to delete collection: $e');
+  }
+}
+
 /// Create a new document in a collection
 Future<void> createDocument(DatabaseManager database) async {
   TerminalUI.printHeader('Create Document');

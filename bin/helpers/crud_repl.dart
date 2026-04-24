@@ -25,6 +25,7 @@ Future<void> startCrudRepl(DatabaseManager database) async {
 ║    CREATE DOCUMENT <collectionId> <userId> <jsonData>                          ║
 ║    READ DOCUMENT <documentId>                                                  ║
 ║    UPDATE DOCUMENT <documentId> <jsonData>                                     ║
+║    DELETE COLLECTION <collectionId>                                            ║
 ║    DELETE DOCUMENT <documentId>                                                ║
 ║    LIST DOCUMENTS <collectionId>                                               ║
 ║    LIST COLLECTIONS                                                             ║
@@ -131,6 +132,9 @@ USER MANAGEMENT:
 COLLECTION MANAGEMENT:
   CREATE COLLECTION <ownerId> <collectionName>
     Example: CREATE COLLECTION user123 posts
+
+  DELETE COLLECTION <collectionId>
+    Example: DELETE COLLECTION coll123
   
   LIST COLLECTIONS
     Shows all collections
@@ -498,7 +502,7 @@ Future<void> _handleUpdate(
 Future<void> _handleDelete(
     List<String> args, DatabaseManager database, String fullCmd) async {
   if (args.isEmpty) {
-    print('❌ DELETE requires: USER or DOCUMENT');
+    print('❌ DELETE requires: USER or COLLECTION or DOCUMENT');
     return;
   }
 
@@ -525,6 +529,25 @@ Future<void> _handleDelete(
         print('✓ User deleted');
         break;
 
+      case 'COLLECTION':
+        if (args.length < 2) {
+          print('❌ DELETE COLLECTION requires: collectionId');
+          print('   Usage: DELETE COLLECTION <collectionId>');
+          return;
+        }
+        final collectionId = args[1];
+        await database.deleteCollection(collectionId);
+        await database.logAction(AuditLog(
+          userId: 'admin_console',
+          action: 'DELETE',
+          resourceType: 'collection',
+          resourceId: collectionId,
+          status: 'success',
+          details: 'DELETE COLLECTION $collectionId',
+        ));
+        print('✓ Collection deleted');
+        break;
+
       case 'DOCUMENT':
         if (args.length < 2) {
           print('❌ DELETE DOCUMENT requires: documentId');
@@ -545,7 +568,7 @@ Future<void> _handleDelete(
         break;
 
       default:
-        print('❌ DELETE supports: USER, DOCUMENT');
+        print('❌ DELETE supports: USER, COLLECTION, DOCUMENT');
     }
   } catch (e) {
     await database.logAction(AuditLog(

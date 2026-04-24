@@ -570,6 +570,15 @@ curl -X DELETE http://localhost:8080/api/collections/$COLLECTION_ID/documents/$D
   -H "Authorization: Bearer $TOKEN"
 ```
 
+### Delete a Collection
+
+```bash
+COLLECTION_ID="col_abc123"
+
+curl -X DELETE http://localhost:8080/api/collections/$COLLECTION_ID \
+  -H "Authorization: Bearer $TOKEN" | jq '.'
+```
+
 ---
 
 ## JavaScript/Node.js
