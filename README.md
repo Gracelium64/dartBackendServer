@@ -181,6 +181,9 @@ POST   /auth/signup                              # Create user
 POST   /auth/login                               # Get JWT token
 POST   /auth/refresh                             # Refresh token
 
+GET    /api/collections                          # List all collections
+POST   /api/collections                          # Create collection
+DELETE /api/collections/{id}                     # Delete collection (and all documents)
 POST   /api/collections/{id}/documents          # Create document
 GET    /api/collections/{id}/documents/{docId}  # Read document
 PUT    /api/collections/{id}/documents/{docId}  # Update document

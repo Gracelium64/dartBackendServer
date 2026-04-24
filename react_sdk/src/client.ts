@@ -412,6 +412,13 @@ export class ShadowAppClient {
   }
 
   /**
+   * Delete a collection and all its documents
+   */
+  async deleteCollection(collectionId: string): Promise<void> {
+    await this.axiosInstance.delete(`/api/collections/${collectionId}`);
+  }
+
+  /**
    * Execute admin SQL (admin only)
    */
   async executeAdminSql(

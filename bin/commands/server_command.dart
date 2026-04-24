@@ -11,8 +11,6 @@ import 'dart:async';
 import 'package:path/path.dart' as path;
 import '../helpers/terminal_ui.dart';
 
-final port = int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080;
-
 /// Handle the "server" command
 ///
 /// Starts the HTTP backend server and listens for incoming API requests.
@@ -26,15 +24,13 @@ final port = int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080;
 Future<void> runServerCommand(ArgResults results) async {
   TerminalUI.printHeader('Starting Shadow App Backend Server');
 
-  // Determine port: --port arg > PORT env var > 8080
-  int port;
-  final portArg = results['port'] as String?;
-  if (portArg != null && portArg.isNotEmpty && portArg != 'null') {
-    port = int.tryParse(portArg) ??
-        (int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080);
-  } else {
-    port = int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080;
-  }
+  // Determine port: explicit --port > PORT env var > 8080
+  final explicitPortArg = results.wasParsed('port')
+      ? (results['port'] as String?)?.trim()
+      : null;
+  final port = int.tryParse(explicitPortArg ?? '') ??
+      int.tryParse(Platform.environment['PORT'] ?? '') ??
+      8080;
 
   final host = results['host'] as String;
   final dbPath = _resolveDbPath(results['db-path'] as String);

@@ -252,6 +252,44 @@ export function useDocuments(
   };
 }
 
+// ==================== Collections Hooks ====================
+
+export interface UseCollectionsReturn {
+  deleteCollection: (collectionId: string) => Promise<void>;
+  isDeleting: boolean;
+  error: ApiError | null;
+}
+
+/**
+ * Hook for managing collection-level operations
+ */
+export function useCollections(client: ShadowAppClient): UseCollectionsReturn {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
+
+  const deleteCollection = useCallback(
+    async (collectionId: string) => {
+      setIsDeleting(true);
+      setError(null);
+      try {
+        await client.deleteCollection(collectionId);
+      } catch (err) {
+        setError(err as ApiError);
+        throw err;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [client],
+  );
+
+  return {
+    deleteCollection,
+    isDeleting,
+    error,
+  };
+}
+
 // ==================== Media Hooks ====================
 
 export interface UseMediaUploadReturn {
