@@ -11,6 +11,8 @@ import 'dart:async';
 import 'package:path/path.dart' as path;
 import '../helpers/terminal_ui.dart';
 
+final port = int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080;
+
 /// Handle the "server" command
 ///
 /// Starts the HTTP backend server and listens for incoming API requests.
