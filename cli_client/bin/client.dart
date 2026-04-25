@@ -182,8 +182,7 @@ class ShadowAppClient {
         final users = (payload['data'] as List?) ?? const [];
         print('\n📋 Users (${users.length}):');
         for (final user in users) {
-          print(
-              '  - ${user['email']} (${_shortId(user['id'])}) [${user['role']}]');
+          print('  - ${user['email']} (${user['id']}) [${user['role']}]');
         }
       } else {
         print(
@@ -519,6 +518,11 @@ class ShadowAppClient {
   }
 
   Future<void> updateUserRoleById(String userId, String role) async {
+    final resolvedUserId = await resolveUserId(userId);
+    if (resolvedUserId == null) {
+      return;
+    }
+
     final normalizedRole = role.trim().toLowerCase();
     if (normalizedRole != 'user' && normalizedRole != 'admin') {
       print('❌ Invalid role. Use "user" or "admin".');
@@ -529,55 +533,172 @@ class ShadowAppClient {
       params: [
         normalizedRole,
         DateTime.now().millisecondsSinceEpoch,
-        userId.trim(),
+        resolvedUserId,
       ],
     );
 
     if (payload != null) {
-      print('✓ Updated role for user: ${_shortId(userId)}');
+      print('✓ Updated role for user: $resolvedUserId');
     }
   }
 
   Future<void> updateUserEmailById(String userId, String email) async {
+    final resolvedUserId = await resolveUserId(userId);
+    if (resolvedUserId == null) {
+      return;
+    }
+
     final normalizedEmail = email.trim().toLowerCase();
     final payload = await executeSql(
       'UPDATE users SET email = ?, updated_at = ? WHERE id = ?',
       params: [
         normalizedEmail,
         DateTime.now().millisecondsSinceEpoch,
-        userId.trim(),
+        resolvedUserId,
       ],
     );
 
     if (payload != null) {
-      print('✓ Updated email for user: ${_shortId(userId)}');
+      print('✓ Updated email for user: $resolvedUserId');
     }
   }
 
   Future<void> resetUserPasswordById(String userId, String newPassword) async {
+    final resolvedUserId = await resolveUserId(userId);
+    if (resolvedUserId == null) {
+      return;
+    }
+
     final hash = _hashPasswordLikeServer(newPassword);
     final payload = await executeSql(
       'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?',
       params: [
         hash,
         DateTime.now().millisecondsSinceEpoch,
-        userId.trim(),
+        resolvedUserId,
       ],
     );
 
     if (payload != null) {
-      print('✓ Password reset for user: ${_shortId(userId)}');
+      print('✓ Password reset for user: $resolvedUserId');
     }
   }
 
   Future<void> deleteUserById(String userId) async {
+    final resolvedUserId = await resolveUserId(userId);
+    if (resolvedUserId == null) {
+      return;
+    }
+
     final payload = await executeSql(
       'DELETE FROM users WHERE id = ?',
-      params: [userId.trim()],
+      params: [resolvedUserId],
     );
     if (payload != null) {
-      print('✓ Deleted user: ${_shortId(userId)}');
+      print('✓ Deleted user: $resolvedUserId');
     }
+  }
+
+  /// Resolve user identifier from full ID, short ID prefix, or email.
+  Future<String?> resolveUserId(String identifier) async {
+    final normalized = identifier.trim();
+    if (normalized.isEmpty) {
+      print('❌ User identifier is required.');
+      return null;
+    }
+
+    if (normalized.contains('@')) {
+      final emailLookup = await executeSql(
+        'SELECT id FROM users WHERE email = ? LIMIT 1',
+        params: [normalized.toLowerCase()],
+        maxRows: 1,
+        silent: true,
+      );
+      final idFromEmail = _extractSingleUserId(emailLookup);
+      if (idFromEmail != null) {
+        return idFromEmail;
+      }
+      print('❌ No user found for email: $normalized');
+      return null;
+    }
+
+    final exactLookup = await executeSql(
+      'SELECT id FROM users WHERE id = ? LIMIT 1',
+      params: [normalized],
+      maxRows: 1,
+      silent: true,
+    );
+    final exactId = _extractSingleUserId(exactLookup);
+    if (exactId != null) {
+      return exactId;
+    }
+
+    final prefixLookup = await executeSql(
+      'SELECT id, email FROM users WHERE id LIKE ? ORDER BY created_at DESC',
+      params: ['${normalized}%'],
+      maxRows: 10,
+      silent: true,
+    );
+
+    final rows = _extractRows(prefixLookup);
+    if (rows.isEmpty) {
+      print('❌ No user found for ID or prefix: $normalized');
+      return null;
+    }
+
+    if (rows.length == 1) {
+      final id = rows.first['id']?.toString();
+      if (id != null && id.isNotEmpty) {
+        return id;
+      }
+      print('❌ Could not parse user ID from lookup result.');
+      return null;
+    }
+
+    print('❌ Ambiguous short ID "$normalized". Matches:');
+    for (final row in rows.take(5)) {
+      print('  - ${row['email']} (${row['id']})');
+    }
+    if (rows.length > 5) {
+      print('  ...and ${rows.length - 5} more');
+    }
+    return null;
+  }
+
+  String? _extractSingleUserId(Map<String, dynamic>? payload) {
+    final rows = _extractRows(payload);
+    if (rows.isEmpty) {
+      return null;
+    }
+    final id = rows.first['id']?.toString();
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return id;
+  }
+
+  List<Map<String, dynamic>> _extractRows(Map<String, dynamic>? payload) {
+    if (payload == null) {
+      return const [];
+    }
+
+    final statements = (payload['data'] as List?) ?? const [];
+    if (statements.isEmpty) {
+      return const [];
+    }
+
+    final first = statements.first;
+    if (first is! Map<String, dynamic>) {
+      return const [];
+    }
+
+    final rows = (first['rows'] as List?) ?? const [];
+    return rows
+        .whereType<Map>()
+        .map((row) => row.map(
+              (key, value) => MapEntry(key.toString(), value),
+            ))
+        .toList(growable: false);
   }
 
   Future<void> updateCollectionRules(
@@ -866,25 +987,25 @@ class RemoteAdminTui {
           _pause();
           break;
         case 2:
-          final userId = _prompt('User ID');
+          final userId = _prompt('User ID / Short ID / Email');
           final role = _prompt('Role (user/admin)', defaultValue: 'user');
           await client.updateUserRoleById(userId, role);
           _pause();
           break;
         case 3:
-          final userId = _prompt('User ID');
+          final userId = _prompt('User ID / Short ID / Email');
           final email = _prompt('New email');
           await client.updateUserEmailById(userId, email);
           _pause();
           break;
         case 4:
-          final userId = _prompt('User ID');
+          final userId = _prompt('User ID / Short ID / Email');
           final password = _prompt('New password');
           await client.resetUserPasswordById(userId, password);
           _pause();
           break;
         case 5:
-          final userId = _prompt('User ID');
+          final userId = _prompt('User ID / Short ID / Email');
           if (_confirm('Delete user ${userId.trim()}?')) {
             await client.deleteUserById(userId);
           }
