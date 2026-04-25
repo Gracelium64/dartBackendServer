@@ -220,6 +220,7 @@ Press Ctrl+C to stop the server gracefully.
     return (Handler innerHandler) {
       return (Request request) async {
         final publicRoutes = [
+          '/',
           '/health',
           '/auth/signup',
           '/auth/login',
