@@ -249,12 +249,14 @@ class ShadowAppClient {
     }
   }
 
-  /// Create a collection
-  Future<void> createCollection(String name) async {
+  /// Create a collection (optionally with rules)
+  Future<void> createCollection(String name, {Map<String, dynamic>? rules}) async {
     try {
-      final response = await request('POST', '/api/collections', body: {
-        'name': name,
-      });
+      final body = <String, dynamic>{'name': name};
+      if (rules != null) {
+        body['rules'] = rules;
+      }
+      final response = await request('POST', '/api/collections', body: body);
 
       if (_isSuccessResponse(response)) {
         final payload = jsonDecode(response.body) as Map<String, dynamic>;
@@ -1042,7 +1044,12 @@ class RemoteAdminTui {
           break;
         case 1:
           final name = _prompt('Collection name');
-          await client.createCollection(name);
+          if (_confirm('Add custom rules now?')) {
+            final rules = await _interactiveRulesBuilder();
+            await client.createCollection(name, rules: rules);
+          } else {
+            await client.createCollection(name);
+          }
           _pause();
           break;
         case 2:
@@ -1054,17 +1061,33 @@ class RemoteAdminTui {
           break;
         case 3:
           final collectionId = _prompt('Collection ID');
-          final rules = _prompt('Rules JSON');
-          try {
-            jsonDecode(rules);
-          } catch (e) {
-            _warn('Invalid JSON: $e');
+          final method = _selectMenuOption(
+            title: 'Update Rules Method',
+            options: const ['Interactive builder', 'Paste JSON', 'Cancel'],
+            escapeIndex: 2,
+          );
+          if (method == 0) {
+            final rules = await _interactiveRulesBuilder();
+            final rulesJson = jsonEncode(rules);
+            await client.updateCollectionRules(collectionId, rulesJson);
             _pause();
             break;
+          } else if (method == 1) {
+            final rules = _prompt('Rules JSON');
+            try {
+              jsonDecode(rules);
+            } catch (e) {
+              _warn('Invalid JSON: $e');
+              _pause();
+              break;
+            }
+            await client.updateCollectionRules(collectionId, rules);
+            _pause();
+            break;
+          } else {
+            // Cancel or back
+            break;
           }
-          await client.updateCollectionRules(collectionId, rules);
-          _pause();
-          break;
         case 4:
           back = true;
           break;
@@ -1268,6 +1291,135 @@ class RemoteAdminTui {
           break;
         default:
           _warn('Invalid option.');
+      }
+    }
+  }
+
+  /// Interactive helper to build collection rules (read/write/public_read)
+  Future<Map<String, dynamic>> _interactiveRulesBuilder([
+    Map<String, dynamic>? initial,
+  ]) async {
+    final readSet = <String>{};
+    final writeSet = <String>{};
+    var publicRead = false;
+
+    if (initial != null) {
+      if (initial['read'] is List) {
+        readSet.addAll((initial['read'] as List).whereType<String>());
+      }
+      if (initial['write'] is List) {
+        writeSet.addAll((initial['write'] as List).whereType<String>());
+      }
+      if (initial['public_read'] is bool) {
+        publicRead = initial['public_read'] as bool;
+      }
+    } else {
+      // sensible defaults
+      readSet.addAll(['admin', 'owner']);
+      writeSet.addAll(['admin', 'owner']);
+    }
+
+    Future<void> _editRoleSet(String title, Set<String> target) async {
+      var back = false;
+      final roleOptions = ['owner', 'admin', 'user', 'authenticated'];
+      while (!back) {
+        final display = roleOptions
+            .map((r) => target.contains(r) ? '☑ $r' : '☐ $r')
+            .toList();
+        final opts = [...display, 'Add specific user ID', 'Remove specific user ID', 'Back'];
+        final choice = _selectMenuOption(
+          title: title,
+          options: opts,
+          escapeIndex: opts.length - 1,
+        );
+
+        if (choice < 0) return;
+        if (choice < roleOptions.length) {
+          final role = roleOptions[choice];
+          if (target.contains(role)) {
+            target.remove(role);
+          } else {
+            target.add(role);
+          }
+          continue;
+        }
+
+        final selected = choice - roleOptions.length;
+        if (selected == 0) {
+          final id = _prompt('User ID to allow');
+          if (id.trim().isNotEmpty) target.add(id.trim());
+          continue;
+        }
+
+        if (selected == 1) {
+          if (target.where((s) => s != 'owner' && s != 'admin' && s != 'user' && s != 'authenticated').isEmpty) {
+            _warn('No specific user IDs to remove');
+            continue;
+          }
+          final ids = target
+              .where((s) => s != 'owner' && s != 'admin' && s != 'user' && s != 'authenticated')
+              .toList();
+          final optsIds = [...ids, 'Back'];
+          final rem = _selectMenuOption(
+            title: 'Remove specific user ID',
+            options: optsIds,
+            escapeIndex: optsIds.length - 1,
+          );
+          if (rem < 0 || rem >= ids.length) continue;
+          target.remove(ids[rem]);
+          continue;
+        }
+
+        back = true;
+      }
+    }
+
+    while (true) {
+      _clearScreen();
+      _printHeader('Collection Rules Builder');
+      print('Public read: ${publicRead ? 'Yes' : 'No'}');
+      print('Read list: ${readSet.isEmpty ? '-' : readSet.join(', ')}');
+      print('Write list: ${writeSet.isEmpty ? '-' : writeSet.join(', ')}');
+      print('');
+
+      final choice = _selectMenuOption(
+        title: 'Edit rules',
+        options: const [
+          'Toggle public_read',
+          'Edit read roles',
+          'Edit write roles',
+          'Add specific read user ID',
+          'Add specific write user ID',
+          'Finish',
+        ],
+        escapeIndex: 5,
+      );
+
+      switch (choice) {
+        case 0:
+          publicRead = !publicRead;
+          break;
+        case 1:
+          await _editRoleSet('Edit read roles', readSet);
+          break;
+        case 2:
+          await _editRoleSet('Edit write roles', writeSet);
+          break;
+        case 3:
+          final id = _prompt('User ID to allow read');
+          if (id.trim().isNotEmpty) readSet.add(id.trim());
+          break;
+        case 4:
+          final id = _prompt('User ID to allow write');
+          if (id.trim().isNotEmpty) writeSet.add(id.trim());
+          break;
+        case 5:
+        default:
+          return {
+            'read': readSet.toList(),
+            'write': writeSet.toList(),
+            'public_read': publicRead,
+          };
       }
     }
   }
