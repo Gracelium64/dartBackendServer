@@ -102,16 +102,15 @@ class ShadowAppClient {
           throw Exception('Unsupported HTTP method: $method');
       }
     } on TimeoutException catch (_) {
-      print(
-          '❌ Request timeout: Server did not respond within $timeoutSeconds seconds');
-      exit(1);
+      throw Exception(
+        'Request timeout: Server did not respond within $timeoutSeconds seconds',
+      );
     } on SocketException catch (e) {
-      print('❌ Connection error: ${e.message}');
-      print('   Make sure the server is running at: $serverUrl');
-      exit(1);
+      throw Exception(
+        'Connection error: ${e.message}. Make sure the server is running at: $serverUrl',
+      );
     } catch (e) {
-      print('❌ Error: $e');
-      exit(1);
+      throw Exception('Request error: $e');
     }
 
     return response;
@@ -439,6 +438,7 @@ class ShadowAppClient {
     List<Object?> params = const [],
     int? maxRows,
     bool disableRowCap = false,
+    bool silent = false,
   }) async {
     try {
       final response = await request('POST', '/api/admin/sql-query', body: {
@@ -451,11 +451,16 @@ class ShadowAppClient {
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
-        print('❌ SQL query failed (${response.statusCode}): ${response.body}');
+        if (!silent) {
+          print(
+              '❌ SQL query failed (${response.statusCode}): ${response.body}');
+        }
         return null;
       }
     } catch (e) {
-      print('❌ SQL query error: $e');
+      if (!silent) {
+        print('❌ SQL query error: $e');
+      }
       return null;
     }
   }
@@ -653,6 +658,36 @@ class ShadowAppClient {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Persist a TUI action in the server audit log.
+  Future<void> logTuiAction(
+    String action, {
+    String details = '',
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final id = 'tui_${now}_${Random.secure().nextInt(1 << 31).toString()}';
+    final safeDetails =
+        details.length > 700 ? '${details.substring(0, 700)}...' : details;
+
+    await executeSql(
+      'INSERT INTO audit_log '
+      '(id, user_id, action, resource_type, resource_id, status, details, timestamp) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      params: [
+        id,
+        'admin_console',
+        action,
+        'tui',
+        'remote_admin_console',
+        'success',
+        safeDetails,
+        now,
+      ],
+      maxRows: 1,
+      disableRowCap: true,
+      silent: true,
+    );
   }
 
   /// Check server health
@@ -998,25 +1033,87 @@ class RemoteAdminTui {
   Future<void> _sqlMenu() async {
     _clearScreen();
     _printHeader('Admin SQL Console');
-    print('Enter SQL statements (max 5 server-side).');
+    _printSqlConsoleCommandCatalog();
     print('');
-    print('Examples:');
-    print('  SELECT id, owner_id FROM documents LIMIT 5');
-    print('  SELECT * FROM documents WHERE owner_id = ? LIMIT 10');
-    print("  UPDATE users SET role='admin' WHERE email='ops@example.com'");
-    print(
-      "  DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5",
+    print('SQL Console Mode (live): no screen rerender while active.');
+    print('Type :help for console commands, :back to return.');
+
+    var maxRows = 200;
+    var disableRowCap = false;
+
+    await client.logTuiAction(
+      'TUI_SQL_MODE_ENTER',
+      details: 'entered admin sql console',
     );
-    final sql = _prompt('SQL');
-    final capRaw = _prompt('Row cap (blank = default 200)', defaultValue: '');
-    final disableCap = _confirm('Disable row cap?');
-    final cap = capRaw.trim().isEmpty ? null : int.tryParse(capRaw.trim());
-    await client.runSqlQuery(
-      sql,
-      maxRows: cap,
-      disableRowCap: disableCap,
-    );
-    _pause();
+
+    while (true) {
+      stdout.write('sql> ');
+      final raw = stdin.readLineSync();
+      if (raw == null) {
+        continue;
+      }
+
+      final input = raw.trim();
+      if (input.isEmpty) {
+        continue;
+      }
+
+      final lower = input.toLowerCase();
+      if (lower == ':back' || lower == ':exit' || lower == ':quit') {
+        await client.logTuiAction(
+          'TUI_SQL_MODE_EXIT',
+          details: 'left admin sql console',
+        );
+        break;
+      }
+
+      if (lower == ':help' || lower == ':commands') {
+        _printSqlConsoleCommandCatalog();
+        continue;
+      }
+
+      if (lower == ':examples') {
+        _printSqlExamples();
+        continue;
+      }
+
+      if (lower == ':cap off') {
+        disableRowCap = true;
+        print('ℹ️ Row cap disabled for this SQL console session.');
+        continue;
+      }
+
+      if (lower == ':cap default') {
+        disableRowCap = false;
+        maxRows = 200;
+        print('ℹ️ Row cap reset to default (200).');
+        continue;
+      }
+
+      if (lower.startsWith(':cap ')) {
+        final value = lower.substring(5).trim();
+        final parsed = int.tryParse(value);
+        if (parsed == null || parsed <= 0) {
+          print('❌ Invalid cap. Use: :cap <positive_integer>');
+          continue;
+        }
+        disableRowCap = false;
+        maxRows = parsed;
+        print('ℹ️ Row cap set to $maxRows for this SQL console session.');
+        continue;
+      }
+
+      await client.logTuiAction(
+        'TUI_SQL_EXECUTE',
+        details: input,
+      );
+      await client.runSqlQuery(
+        input,
+        maxRows: disableRowCap ? null : maxRows,
+        disableRowCap: disableRowCap,
+      );
+      print('');
+    }
   }
 
   Future<void> _rulesAndStatsMenu() async {
@@ -1126,6 +1223,7 @@ class RemoteAdminTui {
         final key = stdin.readByteSync();
 
         if (key == 10 || key == 13) {
+          _logMenuSelection(title, options[selectedIndex]);
           return selectedIndex;
         }
 
@@ -1133,6 +1231,7 @@ class RemoteAdminTui {
           if (escapeIndex != null &&
               escapeIndex >= 0 &&
               escapeIndex < options.length) {
+            _logMenuSelection(title, options[escapeIndex]);
             return escapeIndex;
           }
           return defaultIndex.clamp(0, options.length - 1);
@@ -1141,6 +1240,7 @@ class RemoteAdminTui {
         if (key >= 49 && key <= 57) {
           final index = key - 49;
           if (index >= 0 && index < options.length) {
+            _logMenuSelection(title, options[index]);
             return index;
           }
         }
@@ -1163,6 +1263,7 @@ class RemoteAdminTui {
           } else if (escapeIndex != null &&
               escapeIndex >= 0 &&
               escapeIndex < options.length) {
+            _logMenuSelection(title, options[escapeIndex]);
             return escapeIndex;
           }
         }
@@ -1184,6 +1285,57 @@ class RemoteAdminTui {
     print('Controls: ↑/↓/←/→ move | Enter select | 1-9 quick select');
     print('          Esc/Q back');
     print('------------------------------------------------------------');
+  }
+
+  void _logMenuSelection(String title, String selectedOption) {
+    unawaited(
+      client.logTuiAction(
+        'TUI_MENU_SELECT',
+        details: '$title -> $selectedOption',
+      ),
+    );
+  }
+
+  void _printSqlConsoleCommandCatalog() {
+    print('SQL Console Commands:');
+    print('  :help / :commands   Show this command list');
+    print('  :examples           Show SQL examples');
+    print('  :cap <n>            Set SQL row cap for this session');
+    print('  :cap off            Disable SQL row cap for this session');
+    print('  :cap default        Restore default SQL row cap (200)');
+    print('  :back / :exit       Leave SQL console');
+    print('');
+    _printSqlExamples();
+  }
+
+  void _printSqlExamples() {
+    print('SQL Examples:');
+    print('');
+    print('  -- Quick inspection --');
+    print('  SELECT id, owner_id FROM documents LIMIT 5');
+    print(
+        '  SELECT id, email, role FROM users ORDER BY created_at DESC LIMIT 20');
+    print(
+        '  SELECT id, name, owner_id FROM collections ORDER BY created_at DESC');
+    print('');
+    print('  -- Filtered reads --');
+    print('  SELECT * FROM documents WHERE owner_id = ? LIMIT 10');
+    print(
+        '  SELECT * FROM audit_log WHERE action = \'TUI_SQL_EXECUTE\' ORDER BY timestamp DESC LIMIT 50');
+    print('');
+    print('  -- Updates --');
+    print("  UPDATE users SET role='admin' WHERE email='ops@example.com'");
+    print(
+        "  UPDATE collections SET rules='{\"read\":[\"owner\"],\"write\":[\"owner\"],\"public_read\":false}' WHERE id='collection_id'");
+    print('');
+    print('  -- Multi-statement maintenance --');
+    print(
+      "  DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5",
+    );
+    print('');
+    print('  -- TUI action log tail --');
+    print(
+        "  SELECT user_id, action, details, timestamp FROM audit_log WHERE resource_type='tui' ORDER BY timestamp DESC LIMIT 100");
   }
 
   String _prompt(String label, {String defaultValue = ''}) {
