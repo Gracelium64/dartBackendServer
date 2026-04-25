@@ -85,7 +85,7 @@ class Collection {
             {
               'read': ['owner'],
               'write': ['owner'],
-              'public_read': false,
+              'public_read': true,
             },
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();

@@ -1,0 +1,5 @@
+[grace64@Graces-MacBook-Pro bin] % dart client.dart --server https://shadow-app-server.onrender.com --health
+✓ Server is healthy
+  Status: ok
+  Timestamp: 2026-04-24T23:11:07.116278
+ 
