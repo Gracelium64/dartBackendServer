@@ -8,12 +8,8 @@ A command-line tool for accessing your Shadow App Backend Server remotely from a
 
 - **Dart SDK** 3.0 or higher ([Install Dart](https://dart.dev/get-dart))
 - **Network access** to your backend server
-- **Server URL** (e.g., `http://192.168.1.100:8080`)
+- **Server URL** (e.g., `https://shadow-app-server.onrender.com`)
 - **Credentials** (email/password or admin key)
-
-/_
-http://192.168.0.102:8080
-_/
 
 ### 2. Setup
 
@@ -33,7 +29,19 @@ chmod +x bin/client.dart
 ### 3. Check Server Health
 
 ```bash
-dart bin/client.dart --server http://192.168.1.100:8080 --health
+dart bin/client.dart --server https://shadow-app-server.onrender.com --health
+```
+
+### 4.5 Launch Interactive TUI (Remote Admin Console)
+
+```bash
+dart bin/client.dart --server https://shadow-app-server.onrender.com --tui
+```
+
+With admin key preconfigured:
+
+```bash
+dart bin/client.dart --server https://shadow-app-server.onrender.com --admin-key YOUR_ADMIN_KEY --tui
 ```
 
 ### 4. Login
@@ -293,6 +301,11 @@ dart bin/client.dart \
   --admin-key secret_admin_key \
   --list-users
 ```
+
+Authentication notes:
+
+- `system@shadow.local`, `admin_console@shadow.local`, and `anonymous@shadow.local` are service identities, not regular password-login users.
+- The bootstrap admin account seeded on server startup is `admin@admin.admin` with role `admin`.
 
 ## Script Examples
 

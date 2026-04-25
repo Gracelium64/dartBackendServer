@@ -118,6 +118,7 @@ Press Ctrl+C to stop the server gracefully.
       _deleteDocHandler,
     );
     _router.get('/api/collections/<collectionId>/documents', _listDocsHandler);
+
     _router.post('/api/admin/sql-query', _adminSqlQueryHandler);
 
     // Media endpoints
@@ -143,9 +144,6 @@ Press Ctrl+C to stop the server gracefully.
   }
 
   /// Middleware: Log all incoming requests
-  /// Explanation: Middleware intercepts all requests before they reach handlers.
-  /// This is similar to didChangeAppLifecycleState() in Flutter—a hook to process
-  /// events before they're fully handled.
   Middleware get _loggingMiddleware {
     return (Handler innerHandler) {
       return (Request request) async {
@@ -154,8 +152,6 @@ Press Ctrl+C to stop the server gracefully.
         final duration = DateTime.now().difference(startTime);
         final claims = request.context['claims'] as Map<String, dynamic>?;
 
-        // The logging middleware wraps auth middleware, so request.context may
-        // not always contain claims here. Derive user ID from JWT when present.
         String? authenticatedUserId = claims?['sub']?.toString();
         final authHeader = request.headers['authorization'];
         final adminKeyHeader = request.headers['x-admin-key'];
@@ -191,7 +187,6 @@ Press Ctrl+C to stop the server gracefully.
           ),
         );
 
-        // Keep DB-backed audit trail in sync when user identity is known.
         if (authenticatedUserId != null && authenticatedUserId.isNotEmpty) {
           try {
             await database.logAction(
@@ -207,7 +202,6 @@ Press Ctrl+C to stop the server gracefully.
               ),
             );
           } catch (e) {
-            // Request handling should not fail just because audit persistence fails.
             print('[LOG ERROR] Failed to persist HTTP audit log: $e');
           }
         }
@@ -225,7 +219,6 @@ Press Ctrl+C to stop the server gracefully.
   Middleware get _authMiddleware {
     return (Handler innerHandler) {
       return (Request request) async {
-        // Routes that don't need auth
         final publicRoutes = [
           '/health',
           '/auth/signup',
@@ -234,7 +227,6 @@ Press Ctrl+C to stop the server gracefully.
           '/api/logs/stream',
         ];
 
-        // Shelf request.url.path does not include a leading slash.
         final requestPath = '/${request.url.path}';
 
         if (publicRoutes.contains(requestPath)) {
@@ -242,14 +234,13 @@ Press Ctrl+C to stop the server gracefully.
           return innerHandler(request);
         }
 
-        // Admin key is an alternative machine/operator credential for CLI tooling.
         final adminKey = request.headers['x-admin-key'];
         if (_isValidAdminKey(adminKey)) {
           return innerHandler(
-              request.change(context: {'claims': _adminKeyClaims()}));
+            request.change(context: {'claims': _adminKeyClaims()}),
+          );
         }
 
-        // Check for Authorization header
         final authHeader = request.headers['authorization'];
         if (authHeader == null || !authHeader.startsWith('Bearer ')) {
           return _createJsonErrorResponse(401, 'Missing or invalid token');
@@ -284,7 +275,6 @@ Press Ctrl+C to stop the server gracefully.
   }
 
   /// Handler: Health check endpoint
-  /// Used to verify server is running
   Future<Response> _healthHandler(Request request) async {
     print('[!!!TEST!!!] Health endpoint called');
     return Response.ok(

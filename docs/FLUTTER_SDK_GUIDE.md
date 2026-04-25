@@ -58,6 +58,22 @@ For **Mobile developers**, this SDK provides:
 - Local storage with SharedPreferences
 - Cross-platform (iOS + Android + Web + Desktop)
 
+### Current Server Access Points
+
+- Production base URL: `https://shadow-app-server.onrender.com`
+- Local/dev base URL template: `http://SERVER_IP:PORT` (example: `http://localhost:8080`)
+
+Authentication and access:
+
+- JWT bearer auth for normal app operations: `Authorization: Bearer <token>`
+- Admin key auth for operator tooling: `X-Admin-Key: <admin_key>`
+- Public endpoints (no auth): `/health`, `/auth/signup`, `/auth/login`, `/api/logs/recent`, `/api/logs/stream`
+
+SDK endpoint coverage status:
+
+- Covered by Flutter SDK: auth (`/auth/signup`, `/auth/login`, `/auth/refresh`), document CRUD, media upload/download/metadata, admin SQL (`/api/admin/sql-query`)
+- Not exposed as high-level SDK methods: `/api/users`, `/api/logs/stream`
+
 ---
 
 ## Installation

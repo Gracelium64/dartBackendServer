@@ -2,6 +2,17 @@
 
 Complete guide for integrating with the Shadow App Backend Server using multiple SDKs and tools.
 
+## Current Access Points (April 2026)
+
+- Production: `https://shadow-app-server.onrender.com`
+- Local/dev template: `http://SERVER_IP:PORT` (example: `http://localhost:8080`)
+
+Auth modes and public endpoints:
+
+- JWT bearer auth: `Authorization: Bearer <token>` for authenticated user/admin operations.
+- Admin key auth: `X-Admin-Key: <admin_key>` for operator/admin tooling.
+- Public endpoints (no auth required): `/health`, `/auth/signup`, `/auth/login`, `/api/logs/recent`, `/api/logs/stream`.
+
 ## Table of Contents
 
 1. [Dart/Flutter SDK](#dartflutter-sdk)
@@ -27,7 +38,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  shadow_app:
+  shadow_app_backend:
     path: ../flutter_sdk/
 ```
 
@@ -42,26 +53,29 @@ flutter pub get
 ### Basic Usage
 
 ```dart
-import 'package:shadow_app/shadow_app.dart';
+import 'package:shadow_app_backend/shadow_app.dart';
 
 void main() async {
-  // Initialize
-  final app = ShadowApp(
-    serverUrl: 'http://192.168.1.100:8080',
-    projectId: 'my-project',
+  // Initialize once at app startup
+  await ShadowApp.initialize(
+    serverUrl: 'https://shadow-app-server.onrender.com',
   );
 
   // Authenticate
-  await app.auth.login('user@example.com', 'password');
+  await ShadowApp.auth.login(
+    email: 'user@example.com',
+    password: 'password',
+  );
 
   // Create a document
-  await app.firestore.collection('users').add({
+  final created = await ShadowApp.collection('users').create({
     'name': 'John Doe',
     'email': 'john@example.com',
   });
+  print(created.id);
 
   // Read documents
-  final docs = await app.firestore.collection('users').list();
+  final docs = await ShadowApp.collection('users').list();
   for (final doc in docs) {
     print('${doc.id}: ${doc.data}');
   }
@@ -90,11 +104,14 @@ chmod +x bin/client.dart
 
 ```bash
 # Check server health
-dart bin/client.dart --server http://192.168.1.100:8080 --health
+dart bin/client.dart --server https://shadow-app-server.onrender.com --health
+
+# Launch interactive remote TUI admin console
+dart bin/client.dart --server https://shadow-app-server.onrender.com --tui
 
 # Login
 dart bin/client.dart \
-  --server http://192.168.1.100:8080 \
+  --server https://shadow-app-server.onrender.com \
   --email user@example.com \
   --password mypass \
   --login --print-token \
@@ -102,23 +119,23 @@ dart bin/client.dart \
 
 # Reuse token for later commands
 export SHADOW_TOKEN="your_jwt_token"
-dart bin/client.dart --server http://192.168.1.100:8080 --token "$SHADOW_TOKEN" --list-users
+dart bin/client.dart --server https://shadow-app-server.onrender.com --token "$SHADOW_TOKEN" --list-users
 
 # Perform CRUD operations
 dart bin/client.dart \
-  --server http://192.168.1.100:8080 \
+  --server https://shadow-app-server.onrender.com \
   --token "$SHADOW_TOKEN" \
   --create-collection "posts"
 
 # Admin SQL query block (supports up to 5 statements)
 dart bin/client.dart \
-  --server http://192.168.1.100:8080 \
+  --server https://shadow-app-server.onrender.com \
   --token "$SHADOW_TOKEN" \
   --sql "DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5"
 
 # Row cap override for this run/session
 dart bin/client.dart \
-  --server http://192.168.1.100:8080 \
+  --server https://shadow-app-server.onrender.com \
   --token "$SHADOW_TOKEN" \
   --sql "SELECT * FROM documents" \
   --sql-cap 1000
@@ -135,16 +152,16 @@ Direct HTTP API endpoints for integration with any language or tool.
 ### Base URL
 
 ```
-http://SERVER_IP:PORT
+https://shadow-app-server.onrender.com
 ```
 
-Example: `http://192.168.1.100:8080`
+Local development example: `http://localhost:8080`
 
 ### Admin SQL Endpoint
 
 **Endpoint:** `POST /api/admin/sql-query`
 
-**Auth:** Admin JWT required
+**Auth:** Admin JWT or admin key (`X-Admin-Key`) required
 
 **Request Body:**
 
@@ -183,12 +200,14 @@ Notes:
 
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "user": {
+  "success": true,
+  "data": {
     "id": "user_123",
     "email": "user@example.com",
-    "role": "user"
-  }
+    "role": "user",
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+  },
+  "timestamp": "2026-04-25T12:34:56Z"
 }
 ```
 
@@ -240,20 +259,26 @@ What SDK consumers should expect:
 
 ```
 Authorization: Bearer <admin_token>
+# OR
+X-Admin-Key: <admin_key>
 ```
 
 **Response:**
 
 ```json
-[
-  {
-    "id": "user_123",
-    "email": "user@example.com",
-    "role": "user",
-    "created_at": 1672531200000,
-    "updated_at": 1672531200000
-  }
-]
+{
+  "success": true,
+  "data": [
+    {
+      "id": "user_123",
+      "email": "user@example.com",
+      "role": "user",
+      "created_at": "2026-04-25T00:00:00Z",
+      "updated_at": "2026-04-25T00:00:00Z"
+    }
+  ],
+  "timestamp": "2026-04-25T12:34:56Z"
+}
 ```
 
 ---
@@ -273,19 +298,24 @@ Authorization: Bearer <token>
 **Response:**
 
 ```json
-[
-  {
-    "id": "col_abc123",
-    "name": "posts",
-    "owner_id": "user_123",
-    "rules": {
-      "read": ["owner"],
-      "write": ["owner"],
-      "public_read": false
-    },
-    "created_at": 1672531200000
-  }
-]
+{
+  "success": true,
+  "data": [
+    {
+      "id": "col_abc123",
+      "name": "posts",
+      "owner_id": "user_123",
+      "rules": {
+        "read": ["owner"],
+        "write": ["owner"],
+        "public_read": false
+      },
+      "created_at": "2026-04-25T00:00:00Z",
+      "updated_at": "2026-04-25T00:00:00Z"
+    }
+  ],
+  "timestamp": "2026-04-25T12:34:56Z"
+}
 ```
 
 #### Create Collection
@@ -311,15 +341,20 @@ Content-Type: application/json
 
 ```json
 {
-  "id": "col_abc123",
-  "name": "posts",
-  "owner_id": "user_123",
-  "rules": {
-    "read": ["owner"],
-    "write": ["owner"],
-    "public_read": false
+  "success": true,
+  "data": {
+    "id": "col_abc123",
+    "name": "posts",
+    "owner_id": "user_123",
+    "rules": {
+      "read": ["owner"],
+      "write": ["owner"],
+      "public_read": false
+    },
+    "created_at": "2026-04-25T00:00:00Z",
+    "updated_at": "2026-04-25T00:00:00Z"
   },
-  "created_at": 1672531200000
+  "timestamp": "2026-04-25T12:34:56Z"
 }
 ```
 

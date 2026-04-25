@@ -49,6 +49,16 @@ void main() {
   });
 
   group('Collection Operations', () {
+    test('should seed bootstrap admin on initialization', () async {
+      final bootstrapAdmin = await database.getUserByEmail('admin@admin.admin');
+
+      expect(bootstrapAdmin, isNotNull);
+      expect(bootstrapAdmin!.id, equals('bootstrap_admin'));
+      expect(bootstrapAdmin.role, equals('admin'));
+      expect(bootstrapAdmin.passwordHash, isNotEmpty);
+      expect(bootstrapAdmin.passwordHash, isNot(equals('123456789')));
+    });
+
     test('should create collection', () async {
       final collection = Collection(
         ownerId: testUserId,

@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as path;
 import 'models.dart';
 import 'migrations.dart';
+import '../auth/password_utils.dart';
 import '../config.dart';
 import '../logging/logger.dart';
 
@@ -83,6 +84,7 @@ class DatabaseManager {
 
   void _ensureServiceUsers() {
     final now = DateTime.now().millisecondsSinceEpoch;
+    final bootstrapAdminHash = PasswordUtils.hashPassword('123456789');
     final stmt = _db.prepare('''
       INSERT OR IGNORE INTO users (id, email, password_hash, role, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -103,6 +105,14 @@ class DatabaseManager {
         'anonymous@shadow.local',
         'service-account',
         'user',
+        now,
+        now,
+      ],
+      [
+        'bootstrap_admin',
+        'admin@admin.admin',
+        bootstrapAdminHash,
+        'admin',
         now,
         now,
       ],

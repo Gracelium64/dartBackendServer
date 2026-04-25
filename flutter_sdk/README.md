@@ -2,6 +2,11 @@
 
 Flutter SDK for integrating with the Shadow App Dart Backend Server. It provides Dart-native authentication, document CRUD, and media handling for Flutter applications.
 
+## Current Access Points
+
+- Production: `https://shadow-app-server.onrender.com`
+- Local/dev: `http://localhost:8080` (or your LAN/server URL)
+
 ## Features
 
 - Authentication with signup, login, logout, and token persistence
@@ -36,7 +41,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await ShadowApp.initialize(
-    serverUrl: 'http://localhost:8080',
+    serverUrl: 'https://shadow-app-server.onrender.com',
     enableOfflineMode: true,
   );
 

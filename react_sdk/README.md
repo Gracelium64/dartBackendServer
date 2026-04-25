@@ -2,6 +2,11 @@
 
 React SDK for easy integration with the Shadow App Dart Backend Server. Provides type-safe API client, React hooks, and context provider for seamless integration into React applications.
 
+## Current Access Points
+
+- Production: `https://shadow-app-server.onrender.com`
+- Local/dev: `http://localhost:8080` (or your LAN/server URL)
+
 ## Features
 
 - 🔐 **Authentication** - Signup, login, logout with automatic token refresh
@@ -49,7 +54,7 @@ function App() {
   return (
     <ShadowAppProvider
       config={{
-        baseURL: "http://localhost:8080",
+        baseURL: "https://shadow-app-server.onrender.com",
         onAuthError: () => {
           // Handle auth errors (e.g., redirect to login)
           console.log("Authentication failed");
