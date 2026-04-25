@@ -84,7 +84,7 @@ class DatabaseManager {
 
   void _ensureServiceUsers() {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final bootstrapAdminHash = PasswordUtils.hashPassword('123456789');
+    final bootstrapAdminHash = PasswordUtils.hashPassword('123');
     final stmt = _db.prepare('''
       INSERT OR IGNORE INTO users (id, email, password_hash, role, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -128,6 +128,8 @@ class DatabaseManager {
       final defaultCollections = [
         'users',
         'notes',
+        'events',
+        'collections',
       ];
       for (final name in defaultCollections) {
         final existing = getCollectionByName(name);

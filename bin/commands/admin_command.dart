@@ -174,9 +174,9 @@ Future<void> _adminMenuAuditLog() async {
     final rows = logs
         .map((log) => [
               log.timestamp.toIso8601String().substring(0, 19),
-              log.userId.substring(0, 8),
+              log.userId,
               log.action,
-              '${log.resourceType}:${log.resourceId.substring(0, 8)}',
+              '${log.resourceType}:${log.resourceId}',
               log.status == 'success'
                   ? '✓ Success'
                   : '✗ Failed${log.errorMessage != null ? " (${log.errorMessage})" : ""}',
@@ -266,7 +266,7 @@ Future<void> _adminMenuRules() async {
   for (var i = 0; i < collections.length; i++) {
     print(
       '  ${i + 1}. ${collections[i].name} '
-      '(${collections[i].id.substring(0, 8)})',
+      '(${collections[i].id})',
     );
   }
 

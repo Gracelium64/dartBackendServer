@@ -244,7 +244,7 @@ Future<void> _handleCreate(
               details: 'CREATE USER $email $role',
             ));
 
-            print('✓ User created: $email (ID: ${createdId.substring(0, 8)})');
+            print('✓ User created: $email (ID: $createdId)');
           }
         } catch (e) {
           await database.logAction(AuditLog(
@@ -279,8 +279,7 @@ Future<void> _handleCreate(
           status: 'success',
           details: 'CREATE COLLECTION $collectionName',
         ));
-        print(
-            '✓ Collection created: $collectionName (ID: ${collection.id.substring(0, 8)})');
+        print('✓ Collection created: $collectionName (ID: ${collection.id})');
         break;
 
       case 'DOCUMENT':
@@ -311,7 +310,7 @@ Future<void> _handleCreate(
           details:
               'CREATE DOCUMENT in $collectionId with data: ${jsonEncode(data)}',
         ));
-        print('✓ Document created (ID: ${document.id.substring(0, 8)})');
+        print('✓ Document created (ID: ${document.id})');
         break;
 
       default:
@@ -602,8 +601,7 @@ Future<void> _handleList(
         } else {
           print('Users (${users.length}):');
           for (final user in users) {
-            print(
-                '  - ${user.email} (${user.id.substring(0, 8)}) [${user.role}]');
+            print('  - ${user.email} (${user.id}) [${user.role}]');
           }
         }
         await database.logAction(AuditLog(
@@ -623,8 +621,7 @@ Future<void> _handleList(
         } else {
           print('Collections (${collections.length}):');
           for (final coll in collections) {
-            print(
-                '  - ${coll.name} (${coll.id.substring(0, 8)}) owner: ${coll.ownerId.substring(0, 8)}');
+            print('  - ${coll.name} (${coll.id}) owner: ${coll.ownerId}');
           }
         }
         await database.logAction(AuditLog(
@@ -651,7 +648,7 @@ Future<void> _handleList(
           print('Documents in $collectionId (${documents.length}):');
           for (final doc in documents) {
             print(
-                '  - ${doc.id.substring(0, 8)} owner: ${doc.ownerId.substring(0, 8)} data: ${jsonEncode(doc.data)}');
+                '  - ${doc.id} owner: ${doc.ownerId} data: ${jsonEncode(doc.data)}');
           }
         }
         await database.logAction(AuditLog(
