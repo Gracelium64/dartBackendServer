@@ -109,11 +109,11 @@ Future<void> addUser(DatabaseManager database) async {
 Future<void> deleteUser(DatabaseManager database) async {
   TerminalUI.printHeader('Delete User');
 
-  final identifier = TerminalUI.prompt('User ID or Email', required: true);
+  final identifier =
+      TerminalUI.prompt('User ID / Short ID / Email', required: true);
 
-  // Find user by ID or email
-  var user = await database.getUserById(identifier);
-  user ??= await database.getUserByEmail(identifier);
+  // Find user by exact ID, email, or unique ID prefix.
+  final user = await _findUser(database, identifier);
 
   if (user == null) {
     TerminalUI.printError('User not found');
@@ -154,11 +154,11 @@ Future<void> deleteUser(DatabaseManager database) async {
 Future<void> changeUserRole(DatabaseManager database) async {
   TerminalUI.printHeader('Change User Role');
 
-  final identifier = TerminalUI.prompt('User ID or Email', required: true);
+  final identifier =
+      TerminalUI.prompt('User ID / Short ID / Email', required: true);
 
-  // Find user
-  var user = await database.getUserById(identifier);
-  user ??= await database.getUserByEmail(identifier);
+  // Find user by exact ID, email, or unique ID prefix.
+  final user = await _findUser(database, identifier);
 
   if (user == null) {
     TerminalUI.printError('User not found');
@@ -203,7 +203,8 @@ Future<void> changeUserRole(DatabaseManager database) async {
 Future<void> changeUserEmail(DatabaseManager database) async {
   TerminalUI.printHeader('Change User Email');
 
-  final identifier = TerminalUI.prompt('User ID or Email', required: true);
+  final identifier =
+      TerminalUI.prompt('User ID / Short ID / Email', required: true);
   final user = await _findUser(database, identifier);
 
   if (user == null) {
@@ -255,7 +256,8 @@ Future<void> changeUserEmail(DatabaseManager database) async {
 Future<void> resetUserPassword(DatabaseManager database) async {
   TerminalUI.printHeader('Reset User Password');
 
-  final identifier = TerminalUI.prompt('User ID or Email', required: true);
+  final identifier =
+      TerminalUI.prompt('User ID / Short ID / Email', required: true);
   final user = await _findUser(database, identifier);
 
   if (user == null) {
@@ -332,9 +334,41 @@ Future<void> resetUserPassword(DatabaseManager database) async {
 }
 
 Future<User?> _findUser(DatabaseManager database, String identifier) async {
-  var user = await database.getUserById(identifier);
-  user ??= await database.getUserByEmail(identifier);
-  return user;
+  final normalized = identifier.trim();
+  if (normalized.isEmpty) {
+    return null;
+  }
+
+  // First try exact ID and exact email lookups.
+  var user = await database.getUserById(normalized);
+  user ??= await database.getUserByEmail(normalized.toLowerCase());
+  if (user != null) {
+    return user;
+  }
+
+  // If it doesn't look like an email, allow unique ID-prefix matches.
+  if (!normalized.contains('@')) {
+    final allUsers = await database.getAllUsers();
+    final lowerPrefix = normalized.toLowerCase();
+    final matches = allUsers
+        .where((u) => u.id.toLowerCase().startsWith(lowerPrefix))
+        .toList();
+
+    if (matches.length == 1) {
+      return matches.first;
+    }
+
+    if (matches.length > 1) {
+      TerminalUI.printError(
+        'Ambiguous short ID. ${matches.length} users match "$normalized".',
+      );
+      final preview =
+          matches.take(5).map((u) => '${u.email} (${u.id})').join(', ');
+      print('Matches: $preview${matches.length > 5 ? ', ...' : ''}');
+    }
+  }
+
+  return null;
 }
 
 bool _isValidEmail(String email) {

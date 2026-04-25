@@ -51,12 +51,11 @@ Future<void> createCollection(DatabaseManager database) async {
   TerminalUI.printHeader('Create Collection');
 
   final ownerInput =
-      TerminalUI.prompt('Owner (User ID or Email)', required: true);
+      TerminalUI.prompt('Owner (User ID / Short ID / Email)', required: true);
   final name = TerminalUI.prompt('Collection Name', required: true);
 
   // Resolve owner
-  var owner = await database.getUserById(ownerInput);
-  owner ??= await database.getUserByEmail(ownerInput);
+  final owner = await _resolveUserByIdentifier(database, ownerInput);
 
   if (owner == null) {
     TerminalUI.printError('Owner not found');
@@ -146,7 +145,7 @@ Future<void> createDocument(DatabaseManager database) async {
 
   final collectionId = TerminalUI.prompt('Collection ID', required: true);
   final ownerInput =
-      TerminalUI.prompt('Owner (User ID or Email)', required: true);
+      TerminalUI.prompt('Owner (User ID / Short ID / Email)', required: true);
 
   // Verify collection exists
   final collection = await database.getCollection(collectionId);
@@ -156,8 +155,7 @@ Future<void> createDocument(DatabaseManager database) async {
   }
 
   // Resolve owner
-  var owner = await database.getUserById(ownerInput);
-  owner ??= await database.getUserByEmail(ownerInput);
+  final owner = await _resolveUserByIdentifier(database, ownerInput);
 
   if (owner == null) {
     TerminalUI.printError('Owner not found');
@@ -197,6 +195,44 @@ Future<void> createDocument(DatabaseManager database) async {
     ));
     TerminalUI.printError('Failed to create document: $e');
   }
+}
+
+Future<User?> _resolveUserByIdentifier(
+  DatabaseManager database,
+  String identifier,
+) async {
+  final normalized = identifier.trim();
+  if (normalized.isEmpty) {
+    return null;
+  }
+
+  var user = await database.getUserById(normalized);
+  user ??= await database.getUserByEmail(normalized.toLowerCase());
+  if (user != null) {
+    return user;
+  }
+
+  if (!normalized.contains('@')) {
+    final allUsers = await database.getAllUsers();
+    final prefix = normalized.toLowerCase();
+    final matches =
+        allUsers.where((u) => u.id.toLowerCase().startsWith(prefix)).toList();
+
+    if (matches.length == 1) {
+      return matches.first;
+    }
+
+    if (matches.length > 1) {
+      TerminalUI.printError(
+        'Ambiguous short ID. ${matches.length} users match "$normalized".',
+      );
+      final preview =
+          matches.take(5).map((u) => '${u.email} (${u.id})').join(', ');
+      print('Matches: $preview${matches.length > 5 ? ', ...' : ''}');
+    }
+  }
+
+  return null;
 }
 
 /// Read/display a document
