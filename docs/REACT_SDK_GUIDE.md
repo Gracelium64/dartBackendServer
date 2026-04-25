@@ -1,6 +1,6 @@
 # Shadow App Backend - React SDK Guide
 
-**Version:** 0.1.0  
+**Version:** 0.1.1  
 **Package:** `@shadow-app/react-sdk`  
 **License:** MIT
 
@@ -1454,11 +1454,11 @@ For issues, questions, or contributions:
 
 - **Repository:** Gracelium64/dartBackendServer
 - **Branch:** devGrace (development)
-- **Backend Version:** 0.1.0
-- **SDK Version:** 0.1.0
+- **Backend Version:** 0.1.1
+- **SDK Version:** 0.1.1
 
 ---
 
 **Guide Version:** 1.0  
-**Last Updated:** March 8, 2026  
+**Last Updated:** April 25, 2026  
 **Maintainer:** Shadow App Team

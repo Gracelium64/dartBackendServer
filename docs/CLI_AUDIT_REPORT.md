@@ -1,7 +1,7 @@
 # Shadow App Backend - CLI Audit Report
 
 **Date:** December 2024  
-**Version:** 0.1.0  
+**Version:** 0.1.1  
 **Status:** ✅ PASSED (with bug fix applied)
 
 ---

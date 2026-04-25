@@ -2,7 +2,7 @@ name: shadow_app_backend
 description: >
   A Dart backend learning server for Flutter developers.
   Provides authentication, CRUD operations, media storage, and admin tooling.
-version: 0.1.0
+version: 0.1.1
 environment:
   sdk: ">=3.0.0 <4.0.0"
 

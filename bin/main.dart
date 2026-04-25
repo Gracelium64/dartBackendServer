@@ -40,7 +40,7 @@ import 'helpers/terminal_ui.dart';
 import 'package:shadow_app_backend/logging/logger.dart';
 
 /// Application version
-const String appVersion = '0.1.0';
+const String appVersion = '0.1.1';
 
 /// Main entry point for the Shadow App Backend CLI
 ///

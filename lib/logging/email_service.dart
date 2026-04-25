@@ -122,7 +122,7 @@ class EmailService {
 
   <div class="section" style="background: #f0f0f0; border-left: 4px solid #0066cc;">
     <p><strong>Note:</strong> These logs are automatically archived and sent monthly for compliance and monitoring purposes.</p>
-    <p><em>Shadow App Backend v0.1.0</em></p>
+    <p><em>Shadow App Backend v0.1.1</em></p>
   </div>
 </body>
 </html>

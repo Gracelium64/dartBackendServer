@@ -23,6 +23,8 @@ import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
+const String cliClientVersion = '1.0.0';
+
 class ShadowAppClient {
   final String serverUrl;
   final int timeoutSeconds;
@@ -639,19 +641,35 @@ class ShadowAppClient {
     return base64Url.encode(bytes).replaceAll('=', '');
   }
 
+  Future<Map<String, dynamic>?> fetchHealth() async {
+    try {
+      final response = await request('GET', '/health');
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      final data = jsonDecode(response.body);
+      return data is Map<String, dynamic> ? data : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Check server health
   Future<void> checkHealth() async {
     try {
-      final response = await request('GET', '/health');
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final data = await fetchHealth();
+      if (data != null) {
         print('✓ Server is healthy');
         print('  Status: ${data['status']}');
+        if (data['version'] != null) {
+          print('  Version: ${data['version']}');
+        }
         if (data['timestamp'] != null) {
           print('  Timestamp: ${data['timestamp']}');
         }
       } else {
-        print('❌ Server returned: ${response.statusCode}');
+        print('❌ Server health check failed');
       }
     } catch (e) {
       print('❌ Server is not responding: $e');
@@ -661,10 +679,12 @@ class ShadowAppClient {
 
 class RemoteAdminTui {
   final ShadowAppClient client;
+  String _serverVersion = 'unknown';
 
   RemoteAdminTui(this.client);
 
   Future<void> start() async {
+    await _refreshServerVersion();
     var running = true;
     while (running) {
       _printHeader('Shadow App Remote Admin Console');
@@ -702,6 +722,7 @@ class RemoteAdminTui {
           break;
         case '8':
           await client.checkHealth();
+          await _refreshServerVersion();
           _pause();
           break;
         case '9':
@@ -996,7 +1017,19 @@ class RemoteAdminTui {
   void _printHeader(String title) {
     print('\n============================================================');
     print(title);
+    print('Client v$cliClientVersion | Server v$_serverVersion');
+    print('Server: ${client.serverUrl}');
     print('============================================================');
+  }
+
+  Future<void> _refreshServerVersion() async {
+    final health = await client.fetchHealth();
+    final version = health?['version']?.toString().trim();
+    if (version != null && version.isNotEmpty) {
+      _serverVersion = version;
+      return;
+    }
+    _serverVersion = 'unavailable';
   }
 
   String _prompt(String label, {String defaultValue = ''}) {

@@ -2,7 +2,7 @@
 
 **Document Purpose:** This file provides comprehensive technical specifications for an AI agent to analyze this codebase and create an educational learning program teaching users how to use this backend and how to build similar systems.
 
-**Project Version:** 0.1.0  
+**Project Version:** 0.1.1  
 **Language:** Dart  
 **Framework:** Shelf (HTTP server)  
 **Repository:** Gracelium64/dartBackendServer  
@@ -1095,7 +1095,7 @@ admin_gui/
 
 **Location:** `flutter_sdk/`  
 **Package:** `shadow_app_flutter_sdk`  
-**Version:** 0.1.0
+**Version:** 0.1.1
 
 **Architecture:**
 
@@ -1153,7 +1153,7 @@ await ShadowApp.auth.logout();
 
 **Location:** `flutter_sdk/` (contains both SDKs)  
 **Package:** `@shadowapp/react-sdk`  
-**Version:** 0.1.0
+**Version:** 0.1.1
 
 **Architecture:**
 

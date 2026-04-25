@@ -6,7 +6,7 @@ A **Dart-only learning backend server** for Flutter developers. Write your own b
 
 ```
 ╔════════════════════════════════════════════════════════════════════════════════╗
-║                    🚀 Shadow App Backend Server v0.1.0 🚀                     ║
+║                    🚀 Shadow App Backend Server v0.1.1 🚀                     ║
 ║                                                                                ║
 ║            A Transparent Learning Backend for Flutter Developers               ║
 ║                                                                                ║

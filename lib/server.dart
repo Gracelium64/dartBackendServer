@@ -53,7 +53,7 @@ class ShadowAppServer {
 
     print('''
 ╔════════════════════════════════════════════════════════════════════════════════╗
-║              🚀 Shadow App Backend Server v0.1.0                               ║
+║              🚀 Shadow App Backend Server v0.1.1                               ║
 ║              Initializing core services...                                     ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
     ''');
@@ -281,7 +281,7 @@ Press Ctrl+C to stop the server gracefully.
       jsonEncode({
         'status': 'ok',
         'timestamp': DateTime.now().toIso8601String(),
-        'version': '0.1.0',
+        'version': '0.1.1',
         'uptime': '0d 0h 0m',
         'database': 'connected',
       }),

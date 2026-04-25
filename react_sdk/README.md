@@ -474,7 +474,7 @@ For issues and questions, please visit:
 
 ## Changelog
 
-### 0.1.0
+### 0.1.1
 
 - Initial release
 - Authentication (signup, login, logout, refresh)

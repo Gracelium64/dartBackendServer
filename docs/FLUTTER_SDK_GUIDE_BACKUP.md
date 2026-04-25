@@ -1,6 +1,6 @@
 # Shadow App Backend - Flutter SDK Guide
 
-**Version:** 0.1.0  
+**Version:** 0.1.1  
 **Package:** `shadow_app_backend`  
 **License:** MIT
 
@@ -90,7 +90,7 @@ dependencies:
 dependencies:
   flutter:
     sdk: flutter
-  shadow_app_backend: ^0.1.0
+  shadow_app_backend: ^0.1.1
 ```
 
 ### Fetch Dependencies

@@ -53,7 +53,7 @@ This manual is for operators who will run and monitor the Shadow App Backend ser
 
    ```
    ╔════════════════════════════════════════╗
-   ║   Shadow App Backend Server v0.1.0    ║
+   ║   Shadow App Backend Server v0.1.1    ║
    ║        🚀 Server Starting...           ║
    ╚════════════════════════════════════════╝
 

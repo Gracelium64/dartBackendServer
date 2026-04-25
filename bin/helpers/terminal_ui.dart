@@ -17,7 +17,7 @@ class TerminalUI {
     print('''
 ╔════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                ║
-║                    🚀 Shadow App Backend Server v0.1.0 🚀                      ║
+║                    🚀 Shadow App Backend Server v0.1.1 🚀                      ║
 ║                                                                                ║
 ║                    A Dart Learning Backend for Flutter Developers              ║
 ║                                                                                ║
