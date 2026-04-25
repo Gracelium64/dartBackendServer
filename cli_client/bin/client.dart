@@ -23,7 +23,7 @@ import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
-const String cliClientVersion = '1.0.0';
+const String cliClientVersion = '1.0.1';
 
 class ShadowAppClient {
   final String serverUrl;
@@ -687,45 +687,50 @@ class RemoteAdminTui {
     await _refreshServerVersion();
     var running = true;
     while (running) {
-      _printHeader('Shadow App Remote Admin Console');
-      print('1. Session & Authentication');
-      print('2. User Management');
-      print('3. Collection Management');
-      print('4. Document Operations');
-      print('5. Audit Logs');
-      print('6. Admin SQL Console');
-      print('7. Rules & System Stats');
-      print('8. Health Check');
-      print('9. Exit');
+      final choice = _selectMenuOption(
+        title: 'Shadow App Remote Admin Console',
+        options: const [
+          'Session & Authentication',
+          'User Management',
+          'Collection Management',
+          'Document Operations',
+          'Audit Logs',
+          'Admin SQL Console',
+          'Rules & System Stats',
+          'Health Check',
+          'Exit',
+        ],
+        escapeIndex: 8,
+      );
 
-      switch (_prompt('Select option', defaultValue: '9')) {
-        case '1':
+      switch (choice) {
+        case 0:
           await _sessionMenu();
           break;
-        case '2':
+        case 1:
           await _usersMenu();
           break;
-        case '3':
+        case 2:
           await _collectionsMenu();
           break;
-        case '4':
+        case 3:
           await _documentsMenu();
           break;
-        case '5':
+        case 4:
           await _logsMenu();
           break;
-        case '6':
+        case 5:
           await _sqlMenu();
           break;
-        case '7':
+        case 6:
           await _rulesAndStatsMenu();
           break;
-        case '8':
+        case 7:
           await client.checkHealth();
           await _refreshServerVersion();
           _pause();
           break;
-        case '9':
+        case 8:
           running = false;
           break;
         default:
@@ -739,16 +744,21 @@ class RemoteAdminTui {
   Future<void> _sessionMenu() async {
     var back = false;
     while (!back) {
-      _printHeader('Session & Authentication');
-      print('1. Login with email/password');
-      print('2. Set bearer token manually');
-      print('3. Set admin key');
-      print('4. Show session status');
-      print('5. Clear token');
-      print('6. Back');
+      final choice = _selectMenuOption(
+        title: 'Session & Authentication',
+        options: const [
+          'Login with email/password',
+          'Set bearer token manually',
+          'Set admin key',
+          'Show session status',
+          'Clear token',
+          'Back',
+        ],
+        escapeIndex: 5,
+      );
 
-      switch (_prompt('Select option', defaultValue: '6')) {
-        case '1':
+      switch (choice) {
+        case 0:
           final email = _prompt('Email');
           final password = _prompt('Password');
           final success = await client.login(email, password);
@@ -757,28 +767,28 @@ class RemoteAdminTui {
           }
           _pause();
           break;
-        case '2':
+        case 1:
           final token = _prompt('JWT token');
           client.setToken(token);
           _ok('Token set.');
           _pause();
           break;
-        case '3':
+        case 2:
           final key = _prompt('Admin key');
           client.setAdminKey(key);
           _ok('Admin key set.');
           _pause();
           break;
-        case '4':
+        case 3:
           print('Bearer token: ${client.token == null ? 'not set' : 'set'}');
           _pause();
           break;
-        case '5':
+        case 4:
           client.setToken('');
           _ok('Token cleared.');
           _pause();
           break;
-        case '6':
+        case 5:
           back = true;
           break;
         default:
@@ -790,21 +800,26 @@ class RemoteAdminTui {
   Future<void> _usersMenu() async {
     var back = false;
     while (!back) {
-      _printHeader('User Management');
-      print('1. List users');
-      print('2. Create or upsert user');
-      print('3. Change user role');
-      print('4. Change user email');
-      print('5. Reset user password');
-      print('6. Delete user');
-      print('7. Back');
+      final choice = _selectMenuOption(
+        title: 'User Management',
+        options: const [
+          'List users',
+          'Create or upsert user',
+          'Change user role',
+          'Change user email',
+          'Reset user password',
+          'Delete user',
+          'Back',
+        ],
+        escapeIndex: 6,
+      );
 
-      switch (_prompt('Select option', defaultValue: '7')) {
-        case '1':
+      switch (choice) {
+        case 0:
           await client.listUsers();
           _pause();
           break;
-        case '2':
+        case 1:
           final email = _prompt('Email');
           final password = _prompt('Password');
           final role = _prompt('Role (user/admin)', defaultValue: 'user');
@@ -815,32 +830,32 @@ class RemoteAdminTui {
           );
           _pause();
           break;
-        case '3':
+        case 2:
           final userId = _prompt('User ID');
           final role = _prompt('Role (user/admin)', defaultValue: 'user');
           await client.updateUserRoleById(userId, role);
           _pause();
           break;
-        case '4':
+        case 3:
           final userId = _prompt('User ID');
           final email = _prompt('New email');
           await client.updateUserEmailById(userId, email);
           _pause();
           break;
-        case '5':
+        case 4:
           final userId = _prompt('User ID');
           final password = _prompt('New password');
           await client.resetUserPasswordById(userId, password);
           _pause();
           break;
-        case '6':
+        case 5:
           final userId = _prompt('User ID');
           if (_confirm('Delete user ${userId.trim()}?')) {
             await client.deleteUserById(userId);
           }
           _pause();
           break;
-        case '7':
+        case 6:
           back = true;
           break;
         default:
@@ -852,31 +867,36 @@ class RemoteAdminTui {
   Future<void> _collectionsMenu() async {
     var back = false;
     while (!back) {
-      _printHeader('Collection Management');
-      print('1. List collections');
-      print('2. Create collection');
-      print('3. Delete collection');
-      print('4. Update collection rules');
-      print('5. Back');
+      final choice = _selectMenuOption(
+        title: 'Collection Management',
+        options: const [
+          'List collections',
+          'Create collection',
+          'Delete collection',
+          'Update collection rules',
+          'Back',
+        ],
+        escapeIndex: 4,
+      );
 
-      switch (_prompt('Select option', defaultValue: '5')) {
-        case '1':
+      switch (choice) {
+        case 0:
           await client.listCollections();
           _pause();
           break;
-        case '2':
+        case 1:
           final name = _prompt('Collection name');
           await client.createCollection(name);
           _pause();
           break;
-        case '3':
+        case 2:
           final collectionId = _prompt('Collection ID');
           if (_confirm('Delete collection ${collectionId.trim()}?')) {
             await client.deleteCollection(collectionId);
           }
           _pause();
           break;
-        case '4':
+        case 3:
           final collectionId = _prompt('Collection ID');
           final rules = _prompt('Rules JSON');
           try {
@@ -889,7 +909,7 @@ class RemoteAdminTui {
           await client.updateCollectionRules(collectionId, rules);
           _pause();
           break;
-        case '5':
+        case 4:
           back = true;
           break;
         default:
@@ -901,21 +921,26 @@ class RemoteAdminTui {
   Future<void> _documentsMenu() async {
     var back = false;
     while (!back) {
-      _printHeader('Document Operations');
-      print('1. List documents in collection');
-      print('2. Create document');
-      print('3. Read document');
-      print('4. Update document');
-      print('5. Delete document');
-      print('6. Back');
+      final choice = _selectMenuOption(
+        title: 'Document Operations',
+        options: const [
+          'List documents in collection',
+          'Create document',
+          'Read document',
+          'Update document',
+          'Delete document',
+          'Back',
+        ],
+        escapeIndex: 5,
+      );
 
-      switch (_prompt('Select option', defaultValue: '6')) {
-        case '1':
+      switch (choice) {
+        case 0:
           final collectionId = _prompt('Collection ID');
           await client.listDocuments(collectionId);
           _pause();
           break;
-        case '2':
+        case 1:
           final collectionId = _prompt('Collection ID');
           final dataRaw = _prompt('Document JSON payload');
           try {
@@ -926,13 +951,13 @@ class RemoteAdminTui {
           }
           _pause();
           break;
-        case '3':
+        case 2:
           final collectionId = _prompt('Collection ID');
           final documentId = _prompt('Document ID');
           await client.readDocument(collectionId, documentId);
           _pause();
           break;
-        case '4':
+        case 3:
           final collectionId = _prompt('Collection ID');
           final documentId = _prompt('Document ID');
           final dataRaw = _prompt('Updated JSON payload');
@@ -944,7 +969,7 @@ class RemoteAdminTui {
           }
           _pause();
           break;
-        case '5':
+        case 4:
           final collectionId = _prompt('Collection ID');
           final documentId = _prompt('Document ID');
           if (_confirm('Delete document ${documentId.trim()}?')) {
@@ -952,7 +977,7 @@ class RemoteAdminTui {
           }
           _pause();
           break;
-        case '6':
+        case 5:
           back = true;
           break;
         default:
@@ -962,6 +987,7 @@ class RemoteAdminTui {
   }
 
   Future<void> _logsMenu() async {
+    _clearScreen();
     _printHeader('Audit Logs');
     final rawLimit = _prompt('Limit', defaultValue: '50');
     final parsed = int.tryParse(rawLimit.trim());
@@ -970,8 +996,17 @@ class RemoteAdminTui {
   }
 
   Future<void> _sqlMenu() async {
+    _clearScreen();
     _printHeader('Admin SQL Console');
     print('Enter SQL statements (max 5 server-side).');
+    print('');
+    print('Examples:');
+    print('  SELECT id, owner_id FROM documents LIMIT 5');
+    print('  SELECT * FROM documents WHERE owner_id = ? LIMIT 10');
+    print("  UPDATE users SET role='admin' WHERE email='ops@example.com'");
+    print(
+      "  DELETE FROM documents WHERE owner_id='legacy_user'; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5",
+    );
     final sql = _prompt('SQL');
     final capRaw = _prompt('Row cap (blank = default 200)', defaultValue: '');
     final disableCap = _confirm('Disable row cap?');
@@ -987,17 +1022,22 @@ class RemoteAdminTui {
   Future<void> _rulesAndStatsMenu() async {
     var back = false;
     while (!back) {
-      _printHeader('Rules & System Stats');
-      print('1. Show system stats');
-      print('2. Show recent admin actions');
-      print('3. Back');
+      final choice = _selectMenuOption(
+        title: 'Rules & System Stats',
+        options: const [
+          'Show system stats',
+          'Show recent admin actions',
+          'Back',
+        ],
+        escapeIndex: 2,
+      );
 
-      switch (_prompt('Select option', defaultValue: '3')) {
-        case '1':
+      switch (choice) {
+        case 0:
           await client.showSystemStats();
           _pause();
           break;
-        case '2':
+        case 1:
           await client.runSqlQuery(
             'SELECT user_id, action, resource_type, resource_id, status, timestamp '
             'FROM audit_log ORDER BY timestamp DESC LIMIT 25',
@@ -1005,7 +1045,7 @@ class RemoteAdminTui {
           );
           _pause();
           break;
-        case '3':
+        case 2:
           back = true;
           break;
         default:
@@ -1032,6 +1072,120 @@ class RemoteAdminTui {
     _serverVersion = 'unavailable';
   }
 
+  int _selectMenuOption({
+    required String title,
+    required List<String> options,
+    String? subtitle,
+    int defaultIndex = 0,
+    int? escapeIndex,
+  }) {
+    if (options.isEmpty) {
+      return -1;
+    }
+
+    if (!stdin.hasTerminal) {
+      _clearScreen();
+      _printHeader(title);
+      if (subtitle != null && subtitle.trim().isNotEmpty) {
+        print(subtitle);
+      }
+      for (var i = 0; i < options.length; i++) {
+        print('${i + 1}. ${options[i]}');
+      }
+      final raw = _prompt('Select option', defaultValue: '${defaultIndex + 1}');
+      final selected = int.tryParse(raw.trim());
+      if (selected == null || selected < 1 || selected > options.length) {
+        return defaultIndex.clamp(0, options.length - 1);
+      }
+      return selected - 1;
+    }
+
+    var selectedIndex = defaultIndex.clamp(0, options.length - 1);
+    final previousEcho = stdin.echoMode;
+    final previousLine = stdin.lineMode;
+
+    stdin.echoMode = false;
+    stdin.lineMode = false;
+
+    try {
+      while (true) {
+        _clearScreen();
+        _printHeader(title);
+        if (subtitle != null && subtitle.trim().isNotEmpty) {
+          print(subtitle);
+          print('');
+        }
+
+        for (var i = 0; i < options.length; i++) {
+          final marker = i == selectedIndex ? '❯' : ' ';
+          print('$marker ${i + 1}. ${options[i]}');
+        }
+
+        _printMenuLegend();
+
+        final key = stdin.readByteSync();
+
+        if (key == 10 || key == 13) {
+          return selectedIndex;
+        }
+
+        if (key == 113 || key == 81) {
+          if (escapeIndex != null &&
+              escapeIndex >= 0 &&
+              escapeIndex < options.length) {
+            return escapeIndex;
+          }
+          return defaultIndex.clamp(0, options.length - 1);
+        }
+
+        if (key >= 49 && key <= 57) {
+          final index = key - 49;
+          if (index >= 0 && index < options.length) {
+            return index;
+          }
+        }
+
+        if (key == 27) {
+          final bracket = stdin.readByteSync();
+          if (bracket == 91) {
+            final arrow = stdin.readByteSync();
+            if (arrow == 65) {
+              selectedIndex =
+                  (selectedIndex - 1 + options.length) % options.length;
+            } else if (arrow == 66) {
+              selectedIndex = (selectedIndex + 1) % options.length;
+            } else if (arrow == 67) {
+              selectedIndex = (selectedIndex + 1) % options.length;
+            } else if (arrow == 68) {
+              selectedIndex =
+                  (selectedIndex - 1 + options.length) % options.length;
+            }
+          } else if (escapeIndex != null &&
+              escapeIndex >= 0 &&
+              escapeIndex < options.length) {
+            return escapeIndex;
+          }
+        }
+      }
+    } finally {
+      stdin.echoMode = previousEcho;
+      stdin.lineMode = previousLine;
+      _clearScreen();
+    }
+  }
+
+  void _clearScreen() {
+    stdout.write('\x1B[2J\x1B[H');
+  }
+
+  void _printMenuLegend() {
+    print('');
+    print('------------------------------------------------------------');
+    print('Controls: ↑/↓/←/→ move | Enter select | 1-9 quick select');
+    print('          Esc/Q back');
+    print('------------------------------------------------------------');
+  }
+
   String _prompt(String label, {String defaultValue = ''}) {
     final suffix = defaultValue.isEmpty ? '' : ' [$defaultValue]';
     stdout.write('$label$suffix: ');
@@ -1043,8 +1197,13 @@ class RemoteAdminTui {
   }
 
   bool _confirm(String prompt) {
-    final value = _prompt('$prompt (yes/no)', defaultValue: 'no').toLowerCase();
-    return value == 'yes' || value == 'y';
+    final choice = _selectMenuOption(
+      title: 'Confirm',
+      subtitle: prompt,
+      options: const ['No', 'Yes'],
+      escapeIndex: 0,
+    );
+    return choice == 1;
   }
 
   void _pause() {

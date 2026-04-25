@@ -1,6 +1,6 @@
 name: shadow_app_cli_client
 description: "Command-line client for Shadow App Backend Server. Execute CRUD operations and manage data from your terminal."
-version: 1.0.0
+version: 1.0.1
 publish_to: none
 
 environment:
