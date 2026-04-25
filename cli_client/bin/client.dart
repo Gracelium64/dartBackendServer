@@ -250,7 +250,8 @@ class ShadowAppClient {
   }
 
   /// Create a collection (optionally with rules)
-  Future<void> createCollection(String name, {Map<String, dynamic>? rules}) async {
+  Future<void> createCollection(String name,
+      {Map<String, dynamic>? rules}) async {
     try {
       final body = <String, dynamic>{'name': name};
       if (rules != null) {
@@ -1326,7 +1327,12 @@ class RemoteAdminTui {
         final display = roleOptions
             .map((r) => target.contains(r) ? '☑ $r' : '☐ $r')
             .toList();
-        final opts = [...display, 'Add specific user ID', 'Remove specific user ID', 'Back'];
+        final opts = [
+          ...display,
+          'Add specific user ID',
+          'Remove specific user ID',
+          'Back'
+        ];
         final choice = _selectMenuOption(
           title: title,
           options: opts,
@@ -1352,12 +1358,22 @@ class RemoteAdminTui {
         }
 
         if (selected == 1) {
-          if (target.where((s) => s != 'owner' && s != 'admin' && s != 'user' && s != 'authenticated').isEmpty) {
+          if (target
+              .where((s) =>
+                  s != 'owner' &&
+                  s != 'admin' &&
+                  s != 'user' &&
+                  s != 'authenticated')
+              .isEmpty) {
             _warn('No specific user IDs to remove');
             continue;
           }
           final ids = target
-              .where((s) => s != 'owner' && s != 'admin' && s != 'user' && s != 'authenticated')
+              .where((s) =>
+                  s != 'owner' &&
+                  s != 'admin' &&
+                  s != 'user' &&
+                  s != 'authenticated')
               .toList();
           final optsIds = [...ids, 'Back'];
           final rem = _selectMenuOption(
