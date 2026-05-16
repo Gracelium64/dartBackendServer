@@ -30,6 +30,25 @@ class ShadowAppServer {
     'www.duckdatingapps.com',
     'poly-speed-dating.onrender.com',
   };
+  static const Set<String> _blockedAppNameFingerprints = {
+    // Requested poly speed dating variants (normalized: lowercase + alnum only)
+    'polyspeeddating',
+    // Requested duck dating app/apps variants and likely close forms
+    'duckdatingapps',
+    'duckdatingapp',
+  };
+  static const List<String> _appIdentityHeaders = [
+    'user-agent',
+    'x-client-name',
+    'x-app-name',
+    'x-app-id',
+    'x-client-id',
+    'x-requested-with',
+    'referer',
+    'referrer',
+    'origin',
+    'sec-ch-ua',
+  ];
 
   /// Initialize and start the server
   Future<void> start(
@@ -295,7 +314,7 @@ Press Ctrl+C to stop the server gracefully.
     };
   }
 
-  /// Middleware: Block browser-originated requests from specific websites.
+  /// Middleware: Block requests tied to denied websites or app-name fingerprints.
   Middleware get _websiteBlocklistMiddleware {
     return (Handler innerHandler) {
       return (Request request) async {
@@ -303,6 +322,13 @@ Press Ctrl+C to stop the server gracefully.
           return _createJsonErrorResponse(
             403,
             'Requests from this website are blocked',
+          );
+        }
+
+        if (_isDeniedAppIdentityRequest(request)) {
+          return _createJsonErrorResponse(
+            403,
+            'Requests from this app/client are blocked',
           );
         }
 
@@ -327,6 +353,28 @@ Press Ctrl+C to stop the server gracefully.
     return false;
   }
 
+  bool _isDeniedAppIdentityRequest(Request request) {
+    for (final headerName in _appIdentityHeaders) {
+      final headerValue = request.headers[headerName];
+      if (headerValue == null || headerValue.trim().isEmpty) {
+        continue;
+      }
+
+      final normalizedHeader = _normalizeForFingerprint(headerValue);
+      if (normalizedHeader.isEmpty) {
+        continue;
+      }
+
+      for (final blockedFingerprint in _blockedAppNameFingerprints) {
+        if (normalizedHeader.contains(blockedFingerprint)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
   String? _hostFromUrlHeader(String? value) {
     final raw = (value ?? '').trim().toLowerCase();
     if (raw.isEmpty || raw == 'null') {
@@ -340,6 +388,12 @@ Press Ctrl+C to stop the server gracefully.
     }
 
     return host;
+  }
+
+  String _normalizeForFingerprint(String value) {
+    final lower = value.toLowerCase();
+    final alnumOnly = lower.replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return alnumOnly;
   }
 
   bool _isValidAdminKey(String? candidate) {
