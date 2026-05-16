@@ -26,6 +26,10 @@ import 'api/crud_handlers.dart' as crud;
 class ShadowAppServer {
   late HttpServer _httpServer;
   late Router _router;
+  static const Set<String> _blockedWebsiteHosts = {
+    'www.duckdatingapps.com',
+    'poly-speed-dating.onrender.com',
+  };
 
   /// Initialize and start the server
   Future<void> start(
@@ -66,6 +70,7 @@ class ShadowAppServer {
     final handler = Pipeline()
         .addMiddleware(corsHeaders())
         .addMiddleware(_loggingMiddleware)
+        .addMiddleware(_websiteBlocklistMiddleware)
         .addMiddleware(_authMiddleware)
         .addHandler(_router);
 
@@ -288,6 +293,53 @@ Press Ctrl+C to stop the server gracefully.
         return innerHandler(request.change(context: {'claims': claims}));
       };
     };
+  }
+
+  /// Middleware: Block browser-originated requests from specific websites.
+  Middleware get _websiteBlocklistMiddleware {
+    return (Handler innerHandler) {
+      return (Request request) async {
+        if (_isDeniedWebsiteRequest(request)) {
+          return _createJsonErrorResponse(
+            403,
+            'Requests from this website are blocked',
+          );
+        }
+
+        return innerHandler(request);
+      };
+    };
+  }
+
+  bool _isDeniedWebsiteRequest(Request request) {
+    final originHost = _hostFromUrlHeader(request.headers['origin']);
+    if (originHost != null && _blockedWebsiteHosts.contains(originHost)) {
+      return true;
+    }
+
+    final refererHost = _hostFromUrlHeader(
+      request.headers['referer'] ?? request.headers['referrer'],
+    );
+    if (refererHost != null && _blockedWebsiteHosts.contains(refererHost)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  String? _hostFromUrlHeader(String? value) {
+    final raw = (value ?? '').trim().toLowerCase();
+    if (raw.isEmpty || raw == 'null') {
+      return null;
+    }
+
+    final uri = Uri.tryParse(raw);
+    final host = uri?.host.toLowerCase() ?? '';
+    if (host.isEmpty) {
+      return null;
+    }
+
+    return host;
   }
 
   bool _isValidAdminKey(String? candidate) {
