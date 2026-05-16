@@ -26,6 +26,10 @@ import 'api/crud_handlers.dart' as crud;
 class ShadowAppServer {
   late HttpServer _httpServer;
   late Router _router;
+  static const Set<String> _blockedWebsiteHosts = {
+    'www.duckdatingapps.com',
+    'poly-speed-dating.onrender.com',
+  };
 
   /// Initialize and start the server
   Future<void> start(
@@ -66,6 +70,7 @@ class ShadowAppServer {
     final handler = Pipeline()
         .addMiddleware(corsHeaders())
         .addMiddleware(_loggingMiddleware)
+        .addMiddleware(_websiteBlocklistMiddleware)
         .addMiddleware(_authMiddleware)
         .addHandler(_router);
 
@@ -137,10 +142,42 @@ Press Ctrl+C to stop the server gracefully.
   /// Handler for root route: returns GitHub repo link
   Response _rootHandler(Request request) {
     const githubRepoUrl = 'https://github.com/Gracelium64/dartBackendServer';
-    return Response.ok(
-      'Running Dart Backend from this repository: $githubRepoUrl',
-      headers: {'content-type': 'text/plain'},
-    );
+    final html = '''
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dart Backend</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui/dist/full.css" rel="stylesheet">
+  <style>
+    /* Small fallback when DaisyUI is not available */
+    .card { border-radius: 0.5rem; padding: 1rem; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .card-title { font-weight: 600; font-size: 1.25rem; }
+    .btn { display:inline-flex; align-items:center; gap:0.5rem; padding:0.5rem 0.75rem; border-radius:0.375rem; background:#1f2937; color:white; text-decoration:none; }
+  </style>
+</head>
+<body class="min-h-screen bg-base-200 flex items-center justify-center p-6">
+  <div class="card w-full max-w-md bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h2 class="card-title">Dart Backend</h2>
+      <p class="text-sm break-words">Running from repository: <a href="$githubRepoUrl" target="_blank" rel="noopener noreferrer" class="link link-primary">$githubRepoUrl</a></p>
+      <div class="card-actions justify-end mt-4">
+        <a href="$githubRepoUrl" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16" fill="currentColor" class="inline-block">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.538 5.47 7.59.4.074.55-.17.55-.38 0-.19-.007-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.082-.202-.36-1.017.078-2.12 0 0 .67-.215 2.2.82.64-.178 1.32-.267 2-.271.68.004 1.36.093 2 .271 1.53-1.035 2.2-.82 2.2-.82.438 1.103.16 1.918.078 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.19 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+''';
+    return Response.ok(html,
+        headers: {'content-type': 'text/html; charset=utf-8'});
   }
 
   /// Middleware: Log all incoming requests
@@ -256,6 +293,53 @@ Press Ctrl+C to stop the server gracefully.
         return innerHandler(request.change(context: {'claims': claims}));
       };
     };
+  }
+
+  /// Middleware: Block browser-originated requests from specific websites.
+  Middleware get _websiteBlocklistMiddleware {
+    return (Handler innerHandler) {
+      return (Request request) async {
+        if (_isDeniedWebsiteRequest(request)) {
+          return _createJsonErrorResponse(
+            403,
+            'Requests from this website are blocked',
+          );
+        }
+
+        return innerHandler(request);
+      };
+    };
+  }
+
+  bool _isDeniedWebsiteRequest(Request request) {
+    final originHost = _hostFromUrlHeader(request.headers['origin']);
+    if (originHost != null && _blockedWebsiteHosts.contains(originHost)) {
+      return true;
+    }
+
+    final refererHost = _hostFromUrlHeader(
+      request.headers['referer'] ?? request.headers['referrer'],
+    );
+    if (refererHost != null && _blockedWebsiteHosts.contains(refererHost)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  String? _hostFromUrlHeader(String? value) {
+    final raw = (value ?? '').trim().toLowerCase();
+    if (raw.isEmpty || raw == 'null') {
+      return null;
+    }
+
+    final uri = Uri.tryParse(raw);
+    final host = uri?.host.toLowerCase() ?? '';
+    if (host.isEmpty) {
+      return null;
+    }
+
+    return host;
   }
 
   bool _isValidAdminKey(String? candidate) {

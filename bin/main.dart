@@ -156,3 +156,13 @@ Future<void> main(List<String> args) async {
 void _printUsage(ArgParser parser) {
   print(usageInfo(parser));
 }
+
+/// COPILOT_TODO_START (2026-05-03, specs-followup)
+/// TODO(prod-security): Enforce admin-key validation gate before entering admin console flow.
+/// TODO(media-hardening): Replace simplified multipart parsing with streaming binary-safe parser.
+/// TODO(media-limit): Add configurable server-side MAX_UPLOAD_BYTES and return HTTP 413 on overflow.
+/// TODO(media-governance): Add MIME allowlist, extension checks, and optional malware scanning hook.
+/// TODO(media-quotas): Add per-user and global media storage quotas with clear API errors.
+/// TODO(observability): Emit upload size/reject metrics and structured logs for media operations.
+/// TODO(docs): Keep SPECIFICATION.md media limits and SDK timeout notes synchronized with implementation.
+/// COPILOT_TODO_END
